@@ -1,0 +1,232 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  user_id            Int       @id @default(autoincrement())
+  email         String    @unique
+  username      String?
+  password      String
+  token         String?   @unique
+  created_at    DateTime  @default(now())
+  updated_at    DateTime? @updatedAt
+  
+  // Relations
+  role_id       Int
+  role          Role      @relation(fields: [role_id], references: [role_id])
+  division_id   Int?
+  division      Division?  @relation(fields: [division_id], references: [division_id])
+  
+  // Reverse relations
+  created_questions Question[]   @relation("CreatedBy")
+  assigned_questions Question[]  @relation("AssignedTo")
+  answers           Answer[]
+  comments          Comment[]
+  likes             Like[]
+  notifications     Notification[]
+
+  @@map("users")
+}
+
+model Role {
+  role_id             Int      @id @default(autoincrement())
+  name           String   @unique
+  status         Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime? @updatedAt
+  
+  // Relations
+  users          User[]
+
+  @@map("roles")
+}
+
+
+model Division {
+  division_id             Int      @id @default(autoincrement())
+  division_name  String
+  created_at     DateTime @default(now())
+  updated_at     DateTime? @updatedAt
+  
+  // Relations
+  users          User[]
+  assigned_questions Question[] @relation("AssignedToDivision")
+
+  @@map("divisions")
+}
+
+enum QuestionStatus {
+  OPEN
+  ASSIGNED
+  ANSWERED
+  CLOSED
+}
+
+enum CollaboratorType {
+  PERSONAL
+  DIVISION
+  NONE
+}
+
+model Question {
+  question_id                   Int      @id @default(autoincrement())
+  title                String
+  content              String   @db.Text
+  status               QuestionStatus @default(OPEN)
+  created_at           DateTime @default(now())
+  due_date             DateTime?
+  updated_at           DateTime? @updatedAt
+  deleted_at           DateTime?
+  
+  // Collaborator assignment
+  collaborator_id      Int?
+  collaborator         User?    @relation("AssignedTo", fields: [collaborator_id], references: [user_id])
+  collaborator_division_id Int?
+  collaborator_division Division? @relation("AssignedToDivision", fields: [collaborator_division_id], references: [division_id])
+  collaborator_type    CollaboratorType
+  
+  // Creator
+  creator_id           Int
+  creator              User     @relation("CreatedBy", fields: [creator_id], references: [user_id])
+  
+  // Reverse relations
+  answers              Answer[]
+  comments             Comment[]
+  likes                Like[]
+  tags                 TagsOnQuestions[]
+  notifications        Notification[]
+
+  @@map("questions")
+}
+
+model Answer {
+  answer_id             Int      @id @default(autoincrement())
+  content        String   @db.Text
+  is_accepted    Boolean  @default(false)
+  created_at     DateTime @default(now())
+  updated_at     DateTime? @updatedAt
+  
+  // Relations
+  question_id    Int
+  question       Question @relation(fields: [question_id], references: [question_id])
+  user_id        Int
+  user           User     @relation(fields: [user_id], references: [user_id])
+  
+  // Reverse relations
+  comments       Comment[]
+  likes          Like[]
+  notifications  Notification[]
+
+  @@map("answers")
+}
+
+model Comment {
+  comment_id             Int      @id @default(autoincrement())
+  content        String   @db.Text
+  created_at     DateTime @default(now())
+  updated_at     DateTime? @updatedAt
+  
+  // Relations
+  user_id        Int
+  user           User     @relation(fields: [user_id], references: [user_id])
+  
+  // Optional relations - a comment can be on a question OR an answer
+  question_id    Int?
+  question       Question? @relation(fields: [question_id], references: [question_id])
+  answer_id      Int?
+  answer         Answer?  @relation(fields: [answer_id], references: [answer_id])
+  
+  // Self-relation for nested comments/replies
+  parent_id      Int?
+  parent         Comment? @relation("CommentReplies", fields: [parent_id], references: [comment_id])
+  replies        Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model Like {
+  like_id             Int      @id @default(autoincrement())
+  created_at     DateTime @default(now())
+  
+  user_id        Int
+  user           User     @relation(fields: [user_id], references: [user_id])
+  
+  question_id    Int?
+  question       Question? @relation(fields: [question_id], references: [question_id])
+  answer_id      Int?
+  answer         Answer?  @relation(fields: [answer_id], references: [answer_id])
+
+  @@unique([user_id, question_id, answer_id])
+  @@map("likes")
+}
+
+model Tag {
+  tag_id             Int      @id @default(autoincrement())
+  name           String   @unique
+  created_at     DateTime @default(now())
+  
+  // Relations
+  questions      TagsOnQuestions[]
+
+  @@map("tags")
+}
+
+model TagsOnQuestions {
+  question_id    Int
+  tag_id         Int
+  assigned_at    DateTime @default(now())
+  
+  // Relations
+  question       Question @relation(fields: [question_id], references: [question_id])
+  tag            Tag      @relation(fields: [tag_id], references: [tag_id])
+
+  @@id([question_id, tag_id])
+  @@map("tags_on_questions")
+}
+
+enum NotificationType {
+  QUESTION_ASSIGNED
+  ANSWER_SUBMITTED
+  QUESTION_COMMENTED
+  ANSWER_COMMENTED
+  ANSWER_ACCEPTED
+}
+
+model Notification {
+  id               Int      @id @default(autoincrement())
+  content          String   @db.Text
+  is_read          Boolean  @default(false)
+  created_at       DateTime @default(now())
+  
+  // Relations
+  user_id          Int
+  user             User     @relation(fields: [user_id], references: [user_id])
+  
+  // Optional relations
+  question_id      Int?
+  question         Question? @relation(fields: [question_id], references: [question_id])
+  answer_id        Int?
+  answer           Answer?  @relation(fields: [answer_id], references: [answer_id])
+  
+  notification_type NotificationType
+
+  @@map("notifications")
+}
+
+model Config {
+  config_id         Int      @id @default(autoincrement())
+  name           String?   @unique
+  value          Json?
+  description    String?
+  status         Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime? @updatedAt
+  deleted_at     DateTime?
+
+  @@map("configs")
+}
