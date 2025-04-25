@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { getAllQuestionsListService } from "@/services/question.service";
+import { getAllQuestionsListService, getAllTagsService } from "@/services/question.service";
 
 export const createQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -18,6 +18,14 @@ export const getAllQuestionsList = async (req: Request, res: Response, next: Nex
             data: questions,
             message: 'Questions retrieved successfully' 
         })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const getAllTags = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const tags = await getAllTagsService();
     } catch (error) {
         next(error)
     }

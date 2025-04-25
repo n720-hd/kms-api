@@ -1,6 +1,6 @@
 import { prisma } from "connection"
 
-export const createPostService = async () => {
+export const createQuestionService = async () => {
     
 }
 
@@ -37,4 +37,8 @@ export const getAllQuestionsListService = async () => {
     });
 
     return questions;
+}
+
+export const getAllTagsService = async () => {
+    
 }

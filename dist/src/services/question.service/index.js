@@ -9,11 +9,11 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllQuestionsListService = exports.createPostService = void 0;
+exports.getAllTagsService = exports.getAllQuestionsListService = exports.createQuestionService = void 0;
 const connection_1 = require("../../../connection");
-const createPostService = () => __awaiter(void 0, void 0, void 0, function* () {
+const createQuestionService = () => __awaiter(void 0, void 0, void 0, function* () {
 });
-exports.createPostService = createPostService;
+exports.createQuestionService = createQuestionService;
 const getAllQuestionsListService = () => __awaiter(void 0, void 0, void 0, function* () {
     const questions = yield connection_1.prisma.question.findMany({
         where: {
@@ -48,3 +48,6 @@ const getAllQuestionsListService = () => __awaiter(void 0, void 0, void 0, funct
     return questions;
 });
 exports.getAllQuestionsListService = getAllQuestionsListService;
+const getAllTagsService = () => __awaiter(void 0, void 0, void 0, function* () {
+});
+exports.getAllTagsService = getAllTagsService;

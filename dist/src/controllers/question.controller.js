@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllQuestionsList = exports.createQuestion = void 0;
+exports.getAllTags = exports.getAllQuestionsList = exports.createQuestion = void 0;
 const question_service_1 = require("../services/question.service");
 const createQuestion = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -33,3 +33,12 @@ const getAllQuestionsList = (req, res, next) => __awaiter(void 0, void 0, void 0
     }
 });
 exports.getAllQuestionsList = getAllQuestionsList;
+const getAllTags = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const tags = yield (0, question_service_1.getAllTagsService)();
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getAllTags = getAllTags;
