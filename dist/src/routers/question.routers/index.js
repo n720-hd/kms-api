@@ -1,0 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const question_controller_1 = require("../../controllers/question.controller");
+const verify_token_1 = require("../../middleware/verify.token");
+const express_1 = require("express");
+const router = (0, express_1.Router)();
+router.get('/tags', question_controller_1.getAllTags);
+router.post('/tags', question_controller_1.createNewTag);
+router.patch('/tags/', verify_token_1.verifyUserToken, question_controller_1.deleteTag);
+router.post('/', verify_token_1.verifyUserToken, question_controller_1.createQuestion);
+exports.default = router;

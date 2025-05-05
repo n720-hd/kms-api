@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllUsersService = exports.takeDownPostService = exports.setMaintenanceModeService = void 0;
+exports.approvePendingQuestionService = exports.getAllDivisionsService = exports.getAllUsersService = exports.takeDownPostService = exports.setMaintenanceModeService = void 0;
 const connection_1 = require("../../../connection");
 const setMaintenanceModeService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ maintenanceMode, id, role }) {
     yield connection_1.prisma.user.findUnique({
@@ -68,3 +68,42 @@ const getAllUsersService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
     return users;
 });
 exports.getAllUsersService = getAllUsersService;
+const getAllDivisionsService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ id, role }) {
+    const admin = yield connection_1.prisma.user.findUnique({
+        where: {
+            id: id,
+            role: {
+                name: role
+            }
+        }
+    });
+    if (!admin)
+        throw { msg: 'You are unauthorized to perform this action', status: 401 };
+    const divisions = yield connection_1.prisma.division.findMany({
+        where: {
+            deleted_at: null
+        }
+    });
+    return divisions;
+});
+exports.getAllDivisionsService = getAllDivisionsService;
+const approvePendingQuestionService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ id, role, question_id, status }) {
+    if (role !== 'admin' && role !== 'reviewer')
+        throw { msg: 'You are unauthorized to perform this action', status: 401 };
+    status === true ? (yield connection_1.prisma.question.update({
+        where: {
+            question_id: question_id
+        },
+        data: {
+            status: 'ASSIGNED'
+        }
+    })) : (yield connection_1.prisma.question.update({
+        where: {
+            question_id: question_id
+        },
+        data: {
+            status: 'REJECTED'
+        }
+    }));
+});
+exports.approvePendingQuestionService = approvePendingQuestionService;

@@ -12,6 +12,7 @@ import path from "path";
 import { router } from './routers';
 import { configChecking } from './middleware/config.checking';
 import helmet from 'helmet';
+import cookieParser from 'cookie-parser';
 
 export default class App {
   private app: Express;
@@ -34,6 +35,7 @@ export default class App {
     this.app.use(urlencoded({ extended: true }));
     this.app.use(configChecking);
     this.app.use(helmet());
+    this.app.use(cookieParser())
   }
 
   private handleError(): void {
@@ -75,14 +77,16 @@ export default class App {
   }
 
   public start(): void {
- 
+    process.env.TZ = 'Asia/Jakarta'
 
     // Expose the "public" directory
     const publicDirectory = path.join(__dirname, "public/images/proof-of-payment");
     // console.log(publicDirectory)
 
     this.app.use("/images", express.static(publicDirectory));
-
+    const date = new Date()
+    console.log('Current timezone: ', process.env.TZ);
+    console.log('Current server time: ', date.toLocaleString('en-US', {timeZone: process.env.TZ}));
     this.app.listen(PORT, () => {
       console.log(`  ➜ [ ϟϟ API ϟϟ ] Local: http://localhost:${PORT}/`);
     });

@@ -21,24 +21,7 @@ export const setMaintenanceModeService = async ({maintenanceMode, id, role}: {ma
     })
 }
 
-export const takeDownPostService = async({id, role, postIds}: {id: number, role: string, postIds: number[]}) => {
-    if (role !== 'admin') throw {msg: 'You are unauthorized to perform this action', status: 401};
-    postIds.length > 1 ? await prisma.question.updateMany({
-        where: {
-            question_id: {in: postIds}
-        },
-        data: {
-            deleted_at: new Date()
-        }
-    }) : await prisma.question.update({
-        where: {
-            question_id: postIds[0]
-        },
-        data: {
-            deleted_at: new Date()
-        }
-    })
-}
+
 
 export const getAllUsersService = async ({id, role}: {id: number, role: string}) => {
    const users = await prisma.user.findMany({
@@ -53,8 +36,73 @@ export const getAllUsersService = async ({id, role}: {id: number, role: string})
             email: true
         }
     })
-
     return users
 }
 
+export const getAllDivisionsService = async ({id, role}: {id: number, role: string}) => {
+  const admin = await prisma.user.findUnique({
+    where: {
+        id: id,
+        role: {
+            name: role
+        }
+    }
+  })
+  if(!admin) throw {msg: 'You are unauthorized to perform this action', status: 401};
 
+  const divisions = await prisma.division.findMany({
+    where: {
+        deleted_at: null
+    }
+  })
+
+  return divisions
+}
+
+export const approvePendingQuestionService = async ({id, role, question_id, status}:{id: number, role: string, question_id: number, status: boolean}) => {
+    if (role !== 'admin' && role !== 'reviewer') throw {msg: 'You are unauthorized to perform this action', status: 401};
+    status === true ? (await prisma.question.update({
+        where: {
+             question_id: question_id
+        },
+        data: {
+            status: 'ASSIGNED'
+        }
+    })) : (await prisma.question.update({
+        where: {
+            question_id: question_id
+        },
+        data: {
+            status: 'REJECTED'
+        }
+    }))
+}
+
+export const takeDownQuestionService = async ({id, role, question_ids}:{id: number, role: string, question_ids: number[]}) => {
+    if (role !== 'admin') {
+        await prisma.question.updateMany({
+            where: {
+                question_id: {in:question_ids},
+                creator_id: id,
+                deleted_at: null,
+                is_published: true
+            },
+            data: {
+                deleted_at: new Date(),
+                is_published: false
+            }
+        })
+    } else if (role === 'admin') {
+        await prisma.question.updateMany({
+            where: {
+                question_id: {in: question_ids},
+                deleted_at: null,
+                is_published: true,
+            },
+            data: {
+            deleted_at: new Date(),
+            is_published: false
+        }
+        })
+    }
+}

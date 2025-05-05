@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.getAllUsers = exports.takeDownPost = exports.setMaintenanceMode = void 0;
+exports.approvePendingQuestion = exports.getAllDivisions = exports.getAllUsers = exports.takeDownPost = exports.setMaintenanceMode = void 0;
 const admin_service_1 = require("../services/admin.service");
 const setMaintenanceMode = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -55,3 +55,37 @@ const getAllUsers = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
     }
 });
 exports.getAllUsers = getAllUsers;
+const getAllDivisions = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { authorizationRole, usersId } = req.body;
+        if (authorizationRole !== 'admin')
+            throw { msg: 'Unauthorized', status: 401 };
+        yield (0, admin_service_1.getAllDivisionsService)({ id: usersId, role: authorizationRole });
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Divisions retrieved'
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getAllDivisions = getAllDivisions;
+const approvePendingQuestion = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { authorizationRole, usersId, question_id, status } = req.body;
+        if (authorizationRole !== 'admin' || authorizationRole !== 'reviewer')
+            throw { msg: 'Unauthorized', status: 401 };
+        yield (0, admin_service_1.approvePendingQuestionService)({ id: usersId, role: authorizationRole, question_id, status });
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: `Question ${status}`
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.approvePendingQuestion = approvePendingQuestion;
