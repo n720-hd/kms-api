@@ -142,7 +142,7 @@ const registerCreatorService = (email) => __awaiter(void 0, void 0, void 0, func
     });
 });
 exports.registerCreatorService = registerCreatorService;
-const createAdminService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ username, password, token }) {
+const createAdminService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ username, password, token, firstName, lastName }) {
     const admin = yield prisma_1.default.user.findUnique({
         where: {
             token,
@@ -169,12 +169,14 @@ const createAdminService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
             username,
             password,
             token: null,
-            role_id: adminRole.id
+            role_id: adminRole.id,
+            first_name: firstName,
+            last_name: lastName
         }
     });
 });
 exports.createAdminService = createAdminService;
-const createUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ username, password, token }) {
+const createUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ username, password, token, firstName, lastName }) {
     const user = yield prisma_1.default.user.findUnique({
         where: {
             token,
@@ -201,12 +203,14 @@ const createUserService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ u
             username,
             password,
             token: null,
-            role_id: userRole.id
+            role_id: userRole.id,
+            first_name: firstName,
+            last_name: lastName
         }
     });
 });
 exports.createUserService = createUserService;
-const createCreatorService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ username, password, token }) {
+const createCreatorService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ username, password, token, firstName, lastName }) {
     const creator = yield prisma_1.default.user.findUnique({
         where: {
             token,
@@ -326,7 +330,7 @@ exports.loginCreatorService = loginCreatorService;
 const keepLoginService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ id, role }) {
     const user = yield prisma_1.default.user.findUnique({
         where: {
-            id,
+            user_id: id,
             role: {
                 name: role
             }
@@ -345,7 +349,7 @@ exports.keepLoginService = keepLoginService;
 const changePasswordService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ id, role, password, oldPassword }) {
     const user = yield prisma_1.default.user.findUnique({
         where: {
-            id,
+            user_id: id,
             role: {
                 name: role
             }
@@ -359,7 +363,7 @@ const changePasswordService = (_a) => __awaiter(void 0, [_a], void 0, function* 
     const hashedPassword = yield (0, hash_password_1.hashPassword)(password);
     yield prisma_1.default.user.update({
         where: {
-            id: id,
+            user_id: id,
             role_id: user.role_id
         },
         data: {

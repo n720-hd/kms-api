@@ -79,7 +79,11 @@ const registerCreator = (req, res, next) => __awaiter(void 0, void 0, void 0, fu
 exports.registerCreator = registerCreator;
 const createAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { username, password } = req.body;
+        const { username, firstName, lastName, password } = req.body;
+        if (!firstName)
+            throw { msg: 'First name required', status: 406 };
+        if (!lastName)
+            throw { msg: 'Last name required', status: 406 };
         if (!username || !password)
             throw { msg: 'All fields are required', status: 400 };
         const { token } = req.query;
@@ -87,7 +91,9 @@ const createAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
         yield (0, auth_service_1.createAdminService)({
             username,
             password: hashedPassword,
-            token
+            token,
+            firstName,
+            lastName
         });
         res.status(201).json({
             message: 'Admin registered successfully',
@@ -102,7 +108,11 @@ const createAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, functi
 exports.createAdmin = createAdmin;
 const createUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { username, password } = req.body;
+        const { username, password, firstName, lastName } = req.body;
+        if (!firstName)
+            throw { msg: 'First name required', status: 406 };
+        if (!lastName)
+            throw { msg: 'Last name required', status: 406 };
         if (!username || !password)
             throw { msg: 'All fields are required', status: 400 };
         const { token } = req.query;
@@ -110,7 +120,9 @@ const createUser = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
         yield (0, auth_service_1.createUserService)({
             username,
             password: hashedPassword,
-            token
+            token,
+            firstName,
+            lastName
         });
         res.status(201).json({
             message: 'User registered successfully',
@@ -125,7 +137,11 @@ const createUser = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
 exports.createUser = createUser;
 const createCreator = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { username, password } = req.body;
+        const { username, password, firstName, lastName } = req.body;
+        if (!firstName)
+            throw { msg: 'First name required', status: 406 };
+        if (!lastName)
+            throw { msg: 'Last name required', status: 406 };
         if (!username || !password)
             throw { msg: 'All fields are required', status: 400 };
         const { token } = req.query;
@@ -133,7 +149,9 @@ const createCreator = (req, res, next) => __awaiter(void 0, void 0, void 0, func
         yield (0, auth_service_1.createCreatorService)({
             username,
             password: hashedPassword,
-            token
+            token,
+            firstName,
+            lastName
         });
         res.status(201).json({
             message: 'Creator registered successfully',
@@ -155,13 +173,15 @@ const loginAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
             username,
             password
         });
-        const token = yield (0, jwt_1.generateToken)({ id: admin.id, role: admin.role.name });
+        const token = yield (0, jwt_1.generateToken)({ id: admin.user_id, role: admin.role.name });
         res.status(200).json({
             message: 'Success',
             data: {
-                id: admin.id,
+                id: admin.user_id,
                 email: admin.email,
                 username: admin.username,
+                first_name: admin.first_name,
+                last_name: admin.last_name,
                 role: admin.role.name,
                 token: token,
             },
@@ -182,12 +202,14 @@ const loginCreator = (req, res, next) => __awaiter(void 0, void 0, void 0, funct
             username,
             password
         });
-        const token = yield (0, jwt_1.generateToken)({ id: creator.id, role: creator.role.name });
+        const token = yield (0, jwt_1.generateToken)({ id: creator.user_id, role: creator.role.name });
         res.status(200).json({
             message: 'Success',
             data: {
-                id: creator.id,
+                id: creator.user_id,
                 email: creator.email,
+                first_name: creator.first_name,
+                last_name: creator.last_name,
                 username: creator.username,
                 role: creator.role.name,
                 token: token,
@@ -208,13 +230,15 @@ const loginUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function
             username,
             password
         });
-        const token = yield (0, jwt_1.generateToken)({ id: user.id, role: user.role.name });
+        const token = yield (0, jwt_1.generateToken)({ id: user.user_id, role: user.role.name });
         res.status(200).json({
             message: 'Success',
             data: {
-                id: user.id,
+                id: user.user_id,
                 email: user.email,
                 username: user.username,
+                first_name: user.first_name,
+                last_name: user.last_name,
                 role: user.role.name,
                 token: token,
             },
@@ -229,11 +253,12 @@ exports.loginUser = loginUser;
 const keepLogin = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { usersId, authorizationRole } = req.body;
+        console.log(usersId);
         const user = yield (0, auth_service_1.keepLoginService)({ id: usersId, role: authorizationRole });
         res.status(200).json({
             message: 'Success',
             data: {
-                id: user.id,
+                id: user.user_id,
                 email: user.email,
                 username: user.username,
                 role: user.role.name,

@@ -10,6 +10,7 @@ router.get('/tags', question_controller_1.getAllTags);
 router.post('/tags', question_controller_1.createNewTag);
 router.patch('/tags/', verify_token_1.verifyUserToken, question_controller_1.deleteTag);
 router.post('/', verify_token_1.verifyUserToken, uploader_1.uploader, question_controller_1.createQuestion);
+router.patch('/', verify_token_1.verifyUserToken, uploader_1.uploader, question_controller_1.editQuestion);
 router.get('/notifications', verify_token_1.verifyUserToken, question_controller_1.getAllNotifications);
 router.post('/comment', verify_token_1.verifyUserToken, question_controller_1.createComment);
 exports.default = router;

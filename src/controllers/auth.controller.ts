@@ -152,7 +152,8 @@ export const loginAdmin = async (req: Request, res: Response, next: NextFunction
             password
         })
         
-
+        console.log('admin: ',admin);
+        
         const token = await generateToken({id: admin.user_id, role: admin.role.name})
 
         res.status(200).json({

@@ -11,4 +11,9 @@ router.post('/maintenance', verify_token_1.verifyUserToken, admin_controller_1.s
 router.post('/takedown', verify_token_1.verifyUserToken, admin_controller_1.takeDownQuestion);
 router.get('/users', verify_token_1.verifyUserToken, admin_controller_1.getAllUsers);
 router.post('/approve', verify_token_1.verifyUserToken, admin_controller_1.approvePendingQuestion);
+router.post('/answer/approve', verify_token_1.verifyUserToken, admin_controller_1.approvePendingAnswer);
+router.get('/roles', verify_token_1.verifyUserToken, admin_controller_1.getUserRole);
+router.patch('/role', verify_token_1.verifyUserToken, admin_controller_1.setUserRole);
+router.get('/divisions', verify_token_1.verifyUserToken, admin_controller_1.getAllDivisions);
+router.patch('/division', verify_token_1.verifyUserToken, admin_controller_1.setUserDivision);
 exports.default = router;

@@ -7,8 +7,6 @@ exports.decodeToken = exports.verifyToken = exports.generateToken = void 0;
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const generateTokenSecret = process.env.SECRET_KEY_GENERATE_TOKEN;
 const accessTokenSecret = process.env.SECRET_KEY_ACCESS_TOKEN;
-console.log('generateTokenSecret:', generateTokenSecret);
-console.log('accessTokenSecret:', process.env.SECRET_KEY_ACCESS_TOKEN);
 const generateToken = ({ id, role }) => {
     return jsonwebtoken_1.default.sign({ id, role }, generateTokenSecret, { expiresIn: '2h' });
 };
