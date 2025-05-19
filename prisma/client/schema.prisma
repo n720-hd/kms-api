@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "./client"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  first_name         String?
+  last_name          String?
+  username           String?
+  password           String
+  token              String?        @unique
+  created_at         DateTime       @default(now())
+  updated_at         DateTime?      @updatedAt
+  role_id            Int
+  email              String         @unique
+  division_id        Int?
+  user_id            Int            @id @default(autoincrement())
+  profile_picture    String?
+  answers            Answer[]
+  comments           Comment[]
+  likes              Like[]
+  notifications      Notification[]
+  assigned_questions Question[]     @relation("AssignedTo")
+  created_questions  Question[]     @relation("CreatedBy")
+  division           Division?      @relation(fields: [division_id], references: [id])
+  role               Role           @relation(fields: [role_id], references: [id])
+
+  @@index([division_id], map: "users_division_id_fkey")
+  @@index([role_id], map: "users_role_id_fkey")
+  @@map("users")
+}
+
+model Role {
+  id         Int       @id @default(autoincrement())
+  name       String    @unique
+  status     Boolean   @default(true)
+  created_at DateTime  @default(now())
+  updated_at DateTime? @updatedAt
+  deleted_at DateTime?
+  users      User[]
+
+  @@map("roles")
+}
+
+model Division {
+  id                 Int        @id @default(autoincrement())
+  division_name      String
+  created_at         DateTime   @default(now())
+  updated_at         DateTime?  @updatedAt
+  deleted_at         DateTime?
+  assigned_questions Question[] @relation("AssignedToDivision")
+  users              User[]
+
+  @@map("divisions")
+}
+
+model Question {
+  question_id              Int               @id @default(autoincrement())
+  title                    String
+  content                  String            @db.Text
+  status                   QuestionStatus    @default(PENDING)
+  created_at               DateTime          @default(now())
+  due_date                 DateTime?
+  is_published             Boolean           @default(false)
+  updated_at               DateTime?         @updatedAt
+  deleted_at               DateTime?
+  collaborator_id          Int?
+  collaborator_division_id Int?
+  collaborator_type        CollaboratorType
+  creator_id               Int
+  answers                  Answer[]
+  comments                 Comment[]
+  likes                    Like[]
+  notifications            Notification[]
+  collaborator_division    Division?         @relation("AssignedToDivision", fields: [collaborator_division_id], references: [id])
+  collaborator             User?             @relation("AssignedTo", fields: [collaborator_id], references: [user_id])
+  creator                  User              @relation("CreatedBy", fields: [creator_id], references: [user_id])
+  tags                     TagsOnQuestions[]
+  attachment               Attachment[]
+
+  @@index([collaborator_division_id], map: "questions_collaborator_division_id_fkey")
+  @@index([collaborator_id], map: "questions_collaborator_id_fkey")
+  @@index([creator_id], map: "questions_creator_id_fkey")
+  @@map("questions")
+}
+
+model Attachment {
+  attachment_id Int       @id @default(autoincrement())
+  file_name     String
+  file_path     String
+  created_at    DateTime  @default(now())
+  updated_at    DateTime? @updatedAt
+  deleted_at    DateTime?
+  question_id   Int?
+  answer_id     Int?
+  comment_id    Int?
+  question      Question? @relation(fields: [question_id], references: [question_id])
+  answer        Answer?   @relation(fields: [answer_id], references: [answer_id])
+  comment       Comment?  @relation(fields: [comment_id], references: [comment_id])
+
+  @@index([comment_id], map: "attachments_comment_id_fkey")
+  @@index([answer_id], map: "attachments_answer_id_fkey")
+  @@index([question_id], map: "attachments_question_id_fkey")
+  @@map("attachments")
+}
+
+model Answer {
+  answer_id     Int            @id @default(autoincrement())
+  content       String         @db.Text
+  is_accepted   Boolean        @default(false)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime?      @updatedAt
+  deleted_at    DateTime?
+  question_id   Int
+  user_id       Int
+  question      Question       @relation(fields: [question_id], references: [question_id])
+  user          User           @relation(fields: [user_id], references: [user_id])
+  comments      Comment[]
+  likes         Like[]
+  notifications Notification[]
+  attachment    Attachment[]
+
+  @@index([question_id], map: "answers_question_id_fkey")
+  @@index([user_id], map: "answers_user_id_fkey")
+  @@map("answers")
+}
+
+model Comment {
+  user_id     Int
+  answer_id   Int?
+  comment_id  Int          @id @default(autoincrement())
+  content     String       @db.Text
+  created_at  DateTime     @default(now())
+  parent_id   Int?
+  question_id Int?
+  updated_at  DateTime?    @updatedAt
+  deleted_at  DateTime?
+  answer      Answer?      @relation(fields: [answer_id], references: [answer_id])
+  parent      Comment?     @relation("CommentReplies", fields: [parent_id], references: [comment_id])
+  replies     Comment[]    @relation("CommentReplies")
+  question    Question?    @relation(fields: [question_id], references: [question_id])
+  user        User         @relation(fields: [user_id], references: [user_id])
+  Attachment  Attachment[]
+
+  @@index([answer_id], map: "comments_answer_id_fkey")
+  @@index([parent_id], map: "comments_parent_id_fkey")
+  @@index([question_id], map: "comments_question_id_fkey")
+  @@index([user_id], map: "comments_user_id_fkey")
+  @@map("comments")
+}
+
+model Like {
+  user_id     Int
+  answer_id   Int?
+  created_at  DateTime  @default(now())
+  like_id     Int       @id @default(autoincrement())
+  question_id Int?
+  answer      Answer?   @relation(fields: [answer_id], references: [answer_id])
+  question    Question? @relation(fields: [question_id], references: [question_id])
+  user        User      @relation(fields: [user_id], references: [user_id])
+
+  @@unique([user_id, question_id, answer_id])
+  @@index([answer_id], map: "likes_answer_id_fkey")
+  @@index([question_id], map: "likes_question_id_fkey")
+  @@map("likes")
+}
+
+model Tag {
+  tag_id     Int               @id @default(autoincrement())
+  name       String            @unique
+  created_at DateTime          @default(now())
+  deleted_at DateTime?
+  questions  TagsOnQuestions[]
+
+  @@map("tags")
+}
+
+model TagsOnQuestions {
+  question_id Int
+  tag_id      Int
+  assigned_at DateTime  @default(now())
+  deleted_at  DateTime?
+  question    Question  @relation(fields: [question_id], references: [question_id])
+  tag         Tag       @relation(fields: [tag_id], references: [tag_id])
+
+  @@id([question_id, tag_id])
+  @@index([tag_id], map: "tags_on_questions_tag_id_fkey")
+  @@map("tags_on_questions")
+}
+
+model Notification {
+  id                Int              @id @default(autoincrement())
+  content           String           @db.Text
+  is_read           Boolean          @default(false)
+  created_at        DateTime         @default(now())
+  user_id           Int
+  question_id       Int?
+  answer_id         Int?
+  notification_type NotificationType
+  answer            Answer?          @relation(fields: [answer_id], references: [answer_id])
+  question          Question?        @relation(fields: [question_id], references: [question_id])
+  user              User             @relation(fields: [user_id], references: [user_id])
+
+  @@index([answer_id], map: "notifications_answer_id_fkey")
+  @@index([question_id], map: "notifications_question_id_fkey")
+  @@index([user_id], map: "notifications_user_id_fkey")
+  @@map("notifications")
+}
+
+model Config {
+  config_id   Int       @id @default(autoincrement())
+  name        String?   @unique
+  value       Json?
+  description String?
+  status      Boolean   @default(true)
+  created_at  DateTime  @default(now())
+  updated_at  DateTime? @updatedAt
+  deleted_at  DateTime?
+
+  @@map("configs")
+}
+
+enum QuestionStatus {
+  PENDING
+  ASSIGNED
+  REJECTED
+  ANSWERED
+  CLOSED
+}
+
+enum CollaboratorType {
+  PERSONAL
+  DIVISION
+  NONE
+}
+
+enum NotificationType {
+  QUESTION_ASSIGNED
+  ANSWER_SUBMITTED
+  QUESTION_COMMENTED
+  ANSWER_COMMENTED
+  ANSWER_ACCEPTED
+  LIKE
+}

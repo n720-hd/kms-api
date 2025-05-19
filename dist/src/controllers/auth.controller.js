@@ -173,6 +173,7 @@ const loginAdmin = (req, res, next) => __awaiter(void 0, void 0, void 0, functio
             username,
             password
         });
+        console.log('admin: ', admin);
         const token = yield (0, jwt_1.generateToken)({ id: admin.user_id, role: admin.role.name });
         res.status(200).json({
             message: 'Success',
