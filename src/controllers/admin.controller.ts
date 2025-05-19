@@ -1,4 +1,4 @@
-import { approvePendingQuestionService, getAllDivisionsService, getAllUsersService, setMaintenanceModeService, takeDownQuestionService } from "@/services/admin.service";
+import { approvePendingAnswerService, approvePendingQuestionService, getAllDivisionsService, getAllPendingAnswerService, getAllUsersService, getUserRoleService, setMaintenanceModeService, setUserDivisionService, setUserRoleService, takeDownQuestionService } from "@/services/admin.service";
 import { Request, Response, NextFunction } from "express";
 
 export const setMaintenanceMode = async (req: Request, res: Response, next: NextFunction) => {
@@ -80,6 +80,93 @@ export const takeDownQuestion = async (req: Request, res: Response, next: NextFu
             error: false,
             data: {},
             message: 'Question taken down successfully'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const getAllPendingAnswer = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole} = req.body;
+
+        if(!usersId) throw {msg: 'Invalid credentials', status: 406};
+        if(authorizationRole !== 'admin') throw {msg: 'Invalid credentials', status: 406};
+
+        const pendingAnswer = getAllPendingAnswerService({id: usersId, role: authorizationRole})
+
+        res.status(200).json({
+            error: false,
+            data: pendingAnswer,
+            message: 'Pending answer retrieved'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const approvePendingAnswer = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+            const {usersId, authorizationRole, answer_ids} = req.body;
+
+            const answerId = Array.isArray(answer_ids) ? answer_ids : [];
+
+            if(answerId.length <= 0) throw {msg: 'Please select a valid answer', status: 406}
+            if(!usersId) throw {msg: 'Invalid credentials', status: 406};
+            if(authorizationRole !== 'admin') throw {msg: 'Invalid credentials', status: 406};
+
+            await approvePendingAnswerService({id: usersId, role: authorizationRole, answer_ids: answerId})
+
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Success'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const getUserRole = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole} = req.body;
+
+        const roles = await getUserRoleService({id: usersId, role: authorizationRole})
+
+        res.status(200).json({
+            error: false,
+            data: roles,
+            message: 'Roles successfully retrieved'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const setUserRole = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole, user_id, role_id} = req.body;
+
+        await setUserRoleService({id: usersId, role: authorizationRole, user_id, role_id})
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Role successfully setted'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const setUserDivision = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole, user_id, division_id} = req.body;
+        
+        await setUserDivisionService({id: usersId, role: authorizationRole, user_id, division_id});
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Division successfully setted'
         })
     } catch (error) {
         next(error)

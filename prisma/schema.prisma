@@ -8,6 +8,8 @@ datasource db {
 }
 
 model User {
+  first_name         String?
+  last_name          String?  
   username           String?
   password           String
   token              String?        @unique
@@ -16,7 +18,8 @@ model User {
   role_id            Int
   email              String         @unique
   division_id        Int?
-  id                 Int            @id @default(autoincrement())
+  user_id                 Int            @id @default(autoincrement())
+  profile_picture    String? 
   answers            Answer[]
   comments           Comment[]
   likes              Like[]
@@ -74,8 +77,8 @@ model Question {
   likes                    Like[]
   notifications            Notification[]
   collaborator_division    Division?         @relation("AssignedToDivision", fields: [collaborator_division_id], references: [id])
-  collaborator             User?             @relation("AssignedTo", fields: [collaborator_id], references: [id])
-  creator                  User              @relation("CreatedBy", fields: [creator_id], references: [id])
+  collaborator             User?             @relation("AssignedTo", fields: [collaborator_id], references: [user_id])
+  creator                  User              @relation("CreatedBy", fields: [creator_id], references: [user_id])
   tags                     TagsOnQuestions[]
   attachment               Attachment[]      
 
@@ -116,11 +119,11 @@ model Answer {
   question_id   Int
   user_id       Int
   question      Question       @relation(fields: [question_id], references: [question_id])
-  user          User           @relation(fields: [user_id], references: [id])
+  user          User           @relation(fields: [user_id], references: [user_id])
   comments      Comment[]
   likes         Like[]
   notifications Notification[]
-  Attachment    Attachment[]
+  attachment    Attachment[]
 
   @@index([question_id], map: "answers_question_id_fkey")
   @@index([user_id], map: "answers_user_id_fkey")
@@ -141,7 +144,7 @@ model Comment {
   parent      Comment?     @relation("CommentReplies", fields: [parent_id], references: [comment_id])
   replies     Comment[]    @relation("CommentReplies")
   question    Question?    @relation(fields: [question_id], references: [question_id])
-  user        User         @relation(fields: [user_id], references: [id])
+  user        User         @relation(fields: [user_id], references: [user_id])
   Attachment  Attachment[]
 
   @@index([answer_id], map: "comments_answer_id_fkey")
@@ -159,7 +162,7 @@ model Like {
   question_id Int?
   answer      Answer?   @relation(fields: [answer_id], references: [answer_id])
   question    Question? @relation(fields: [question_id], references: [question_id])
-  user        User      @relation(fields: [user_id], references: [id])
+  user        User      @relation(fields: [user_id], references: [user_id])
 
   @@unique([user_id, question_id, answer_id])
   @@index([answer_id], map: "likes_answer_id_fkey")
@@ -201,7 +204,7 @@ model Notification {
   notification_type NotificationType
   answer            Answer?          @relation(fields: [answer_id], references: [answer_id])
   question          Question?        @relation(fields: [question_id], references: [question_id])
-  user              User             @relation(fields: [user_id], references: [id])
+  user              User             @relation(fields: [user_id], references: [user_id])
 
   @@index([answer_id], map: "notifications_answer_id_fkey")
   @@index([question_id], map: "notifications_question_id_fkey")

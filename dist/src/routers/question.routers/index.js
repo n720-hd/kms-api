@@ -1,11 +1,15 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const question_controller_1 = require("../../controllers/question.controller");
+const uploader_1 = require("../../middleware/uploader");
 const verify_token_1 = require("../../middleware/verify.token");
 const express_1 = require("express");
 const router = (0, express_1.Router)();
+router.get('/', question_controller_1.getAllQuestionsList);
 router.get('/tags', question_controller_1.getAllTags);
 router.post('/tags', question_controller_1.createNewTag);
 router.patch('/tags/', verify_token_1.verifyUserToken, question_controller_1.deleteTag);
-router.post('/', verify_token_1.verifyUserToken, question_controller_1.createQuestion);
+router.post('/', verify_token_1.verifyUserToken, uploader_1.uploader, question_controller_1.createQuestion);
+router.get('/notifications', verify_token_1.verifyUserToken, question_controller_1.getAllNotifications);
+router.post('/comment', verify_token_1.verifyUserToken, question_controller_1.createComment);
 exports.default = router;

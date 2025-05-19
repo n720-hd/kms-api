@@ -141,12 +141,12 @@ export const loginAdmin = async (req: Request, res: Response, next: NextFunction
         })
         
 
-        const token = await generateToken({id: admin.id, role: admin.role.name})
+        const token = await generateToken({id: admin.user_id, role: admin.role.name})
 
         res.status(200).json({
             message: 'Success',
             data: {
-                id: admin.id,
+                id: admin.user_id,
                 email: admin.email,
                 username: admin.username,
                 role: admin.role.name,
@@ -168,11 +168,11 @@ export const loginCreator = async (req: Request, res: Response, next: NextFuncti
             username,
             password
         })
-        const token = await generateToken({id: creator.id, role: creator.role.name})
+        const token = await generateToken({id: creator.user_id, role: creator.role.name})
         res.status(200).json({
             message: 'Success',
             data: {
-                id: creator.id,
+                id: creator.user_id,
                 email: creator.email,
                 username: creator.username,
                 role: creator.role.name,
@@ -192,11 +192,11 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
             username,
             password
         })
-        const token = await generateToken({id: user.id, role: user.role.name})
+        const token = await generateToken({id: user.user_id, role: user.role.name})
         res.status(200).json({
             message: 'Success',
             data: {
-                id: user.id,
+                id: user.user_id,
                 email: user.email, 
                 username: user.username,
                 role: user.role.name,
@@ -213,12 +213,14 @@ export const keepLogin = async (req: Request, res: Response, next: NextFunction)
     try {
         const {usersId, authorizationRole} = req.body
 
+        console.log(usersId)
+
         const user = await keepLoginService({id: usersId, role: authorizationRole})
 
         res.status(200).json({
             message: 'Success',
             data: {
-                id: user.id,
+                id: user.user_id,
                 email: user.email,
                 username: user.username,
                 role: user.role.name,

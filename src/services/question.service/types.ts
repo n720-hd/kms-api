@@ -15,6 +15,28 @@ export interface ICreateQuestion {
   };
 }
 
+// interface attachments {
+//   attachments: Express.Multer.File[]
+// }
+
+export interface IEditQuestion{
+  title: string;
+  content: string;
+  due_date: Date;
+  tag_ids: number[];
+  collaborator_type: "PERSONAL" | "DIVISION" | "NONE";
+  collaborator_id?: number;
+  id: number;
+  role: string;
+  attachments: { 
+    attachments: Express.Multer.File[] 
+  };
+  question_id: number;
+  attachmentsToDelete?: number[];
+  tagsToDelete?: number[];
+  collaborator_division_id?: number;
+}
+
 export interface IGetAllQuestionsList {
   search: string;
   sortBy: string;

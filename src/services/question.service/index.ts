@@ -1,5 +1,6 @@
 import { prisma } from "connection"
-import { ICreateQuestion, IGetAllQuestionsList, PrismaTransactionalClient, QuestionStatus } from "./types";
+import { ICreateQuestion, IEditQuestion, IGetAllQuestionsList, PrismaTransactionalClient, QuestionStatus } from "./types";
+import { deleteFiles } from "@/utils/delete.files";
 
 export const createQuestionService = async ({
     title, 
@@ -20,7 +21,7 @@ export const createQuestionService = async ({
     if(!tag_ids || !Array.isArray(tag_ids) || tag_ids.length === 0) throw {msg: 'At least one tag is required', status: 406};
     const isAuthorized = await prisma.user.findUnique({
         where: {
-            id,
+            user_id: id,
             role: {
                 name: {
                     in: ['admin', 'creator']
@@ -88,7 +89,7 @@ export const createQuestionService = async ({
                 await Promise.all(divisionUsers.map(user => tx.notification.create({
                     data: {
                         content: `Your division has been assigned a new question: ${title}`,
-                        user_id: user.id,
+                        user_id: user.user_id,
                         question_id: question.question_id,
                         notification_type: 'QUESTION_ASSIGNED'
                     }
@@ -109,7 +110,7 @@ export const createQuestionService = async ({
                 tx.notification.create({
                     data: {
                         content: `New question pending approval: ${title}`,
-                        user_id: reviewer.id,
+                        user_id: reviewer.user_id,
                         question_id: question.question_id,
                         notification_type: 'QUESTION_ASSIGNED'
                     }
@@ -176,7 +177,7 @@ export const getAllQuestionsListService = async ({search = '', sortBy = 'created
         include: {
             creator: {
                 select: {
-                    id: true,
+                    user_id: true,
                     username: true,
                     email: true
                 }
@@ -184,7 +185,7 @@ export const getAllQuestionsListService = async ({search = '', sortBy = 'created
             attachment: true,
             collaborator: {
                 select: {
-                    id: true,
+                    user_id: true,
                     username: true,
                     email: true
                 }
@@ -286,7 +287,7 @@ export const getAllNotificationsService = async ({id, role}:{id: number, role: s
     return notifications;
 }
 
-export const createCommentService = async ({question_id, comment , user_id, attachments, parent_comment_id}:{question_id: number, comment: string, user_id: number, attachments: Express.Multer.File[], parent_comment_id: number}) => {
+export const createCommentService = async ({question_id, comment , user_id, attachments, parent_comment_id, answer_id}:{question_id: number, comment: string, user_id: number, attachments: Express.Multer.File[], parent_comment_id: number, answer_id: number}) => {
     if (parent_comment_id){
         const parentComment = await prisma.comment.findUnique({
             where: {comment_id: parent_comment_id}
@@ -296,9 +297,12 @@ export const createCommentService = async ({question_id, comment , user_id, atta
     const createdComment = await prisma.comment.create({
         data: {
             content: comment,
-            question_id: question_id,
             user_id: user_id,
-            parent_id: parent_comment_id ? parent_comment_id : null
+            parent_id: parent_comment_id ? parent_comment_id : null,
+            ...(question_id
+                ? {question_id: question_id}
+                : {answer_id: answer_id}
+            )
         }
     })
 
@@ -318,7 +322,7 @@ export const createCommentService = async ({question_id, comment , user_id, atta
 export const likeQuestionService = async({id, role, question_id, answer_id}:{id: number, role: string, question_id: number, answer_id: number}) => {
     const isUser = await prisma.user.findUnique({
         where: {
-            id: id
+            user_id: id
         }
     })
     if(!isUser) throw {msg: 'Invalid Credentials', status: 406}
@@ -371,4 +375,145 @@ export const likeQuestionService = async({id, role, question_id, answer_id}:{id:
             }
         })
     }
+}
+
+export const editQuestionService = async({title, content, question_id, tag_ids, due_date, collaborator_type, collaborator_id, attachments, id, role, attachmentsToDelete, tagsToDelete, collaborator_division_id}: IEditQuestion) => {
+    await prisma.$transaction(async (tx: PrismaTransactionalClient) => {
+        const questionToEdit = await tx.question.findUnique({
+            where: {question_id},
+            include: {attachment: true, tags: true}
+        })
+
+        if(!questionToEdit) throw{msg: 'Invalid Questtion', status: 404}
+        if(questionToEdit.creator_id !==  id) throw {msg: 'You can only edit your own question', status: 403}
+
+        if (attachmentsToDelete && attachmentsToDelete.length > 0){
+            const attachmentsToBeDeleted = await tx.attachment.findMany({
+                where: {
+                    question_id,
+                    attachment_id: {in: attachmentsToDelete}
+                }
+            })
+            if (attachmentsToBeDeleted.length > 0) await deleteFiles({
+                fileToDelete: {
+                    file: attachmentsToBeDeleted.map(attachment => ({path: attachment.file_path}))
+                }
+            })
+            await tx.attachment.deleteMany({
+                where: {
+                    attachment_id: {in: attachmentsToDelete},
+                    question_id
+                }
+            })
+        }
+
+        if(tagsToDelete && tagsToDelete.length > 0){
+            const tagsToBeDeleted = await tx.tagsOnQuestions.findMany({
+                where: {
+                    question_id,
+                    tag_id: {in: tagsToDelete}
+                },
+            })
+
+            if(tagsToBeDeleted.length > 0) await tx.tagsOnQuestions.deleteMany({
+                where: {tag_id: {in: tagsToDelete}}
+            })
+        }
+
+        const updateData: any = {};
+
+        if(title !== undefined) updateData.title = title;
+        if(content !== undefined) updateData.content = content;
+        if(due_date !== undefined) updateData.due_date = due_date;
+        if(collaborator_type !== undefined){
+            if(collaborator_type === 'PERSONAL'){
+                updateData.collaborator_id = collaborator_id;
+                updateData.collaborator_division_id = null;
+
+                if (collaborator_id) {
+                    await tx.notification.create({
+                        data: {
+                            user_id: collaborator_id,
+                            notification_type: 'QUESTION_ASSIGNED',
+                            content: `You have been assigned a new Question: ${title}`
+                        }
+                    });
+                }
+            }else if(collaborator_type === 'DIVISION'){
+                updateData.collaborator_division_id = collaborator_division_id;
+                updateData.collaborator_id = null;
+
+                const divisionUsers = await prisma.user.findMany({
+                    where: {
+                        division_id: collaborator_division_id
+                    }
+                })
+
+                await Promise.all(
+                    divisionUsers.map(user => (
+                        tx.notification.create({
+                            data: {
+                                user_id: user.user_id,
+                                notification_type: 'QUESTION_ASSIGNED',
+                                content: `Your division has been assigned a new question: ${title}`,
+                                question_id
+                            }
+                        })
+                    ))
+                )
+            }else {
+                updateData.collaborator_id = null;
+                updateData.collaborator_division_id = null
+            }
+        }
+        updateData.updated_at = new Date();
+
+        console.log(updateData);
+
+        const updatedQuestion = await tx.question.update({
+            where: {question_id},
+            data: updateData
+        })
+
+        console.log(updatedQuestion);
+
+        if(attachments.attachments.length > 0) {
+            await Promise.all(
+                attachments.attachments.map(attachment => (
+                    tx.attachment.create({
+                        data: {
+                            file_name: attachment.filename,
+                            file_path: `src/public/attachments/${attachment.filename}`,
+                            question_id
+                        }
+                    })
+                ))
+            )
+        }
+
+        if(tag_ids.length > 0){
+            await Promise.all(
+                tag_ids.map(tag_id => 
+                    tx.tagsOnQuestions.create({
+                        data: {
+                            question_id,
+                            tag_id: Number(tag_id)
+                        }
+                    })
+                )
+            )
+        }
+
+    })
+    return await prisma.question.findUnique({
+        where: {question_id},
+        include: {
+            attachment: true,
+            tags: {
+                include: {
+                    tag: true
+                }
+            }
+        }
+    })
 }

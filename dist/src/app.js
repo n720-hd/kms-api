@@ -43,6 +43,7 @@ const path_1 = __importDefault(require("path"));
 const routers_1 = require("./routers");
 const config_checking_1 = require("./middleware/config.checking");
 const helmet_1 = __importDefault(require("helmet"));
+const cookie_parser_1 = __importDefault(require("cookie-parser"));
 class App {
     constructor() {
         this.app = (0, express_1.default)();
@@ -59,6 +60,7 @@ class App {
         this.app.use((0, express_1.urlencoded)({ extended: true }));
         this.app.use(config_checking_1.configChecking);
         this.app.use((0, helmet_1.default)());
+        this.app.use((0, cookie_parser_1.default)());
     }
     handleError() {
         // Not found handler
@@ -90,10 +92,14 @@ class App {
         this.app.use(routers_1.router);
     }
     start() {
+        process.env.TZ = 'Asia/Jakarta';
         // Expose the "public" directory
         const publicDirectory = path_1.default.join(__dirname, "public/images/proof-of-payment");
         // console.log(publicDirectory)
         this.app.use("/images", express_1.default.static(publicDirectory));
+        const date = new Date();
+        console.log('Current timezone: ', process.env.TZ);
+        console.log('Current server time: ', date.toLocaleString('en-US', { timeZone: process.env.TZ }));
         this.app.listen(config_1.PORT, () => {
             console.log(`  ➜ [ ϟϟ API ϟϟ ] Local: http://localhost:${config_1.PORT}/`);
         });

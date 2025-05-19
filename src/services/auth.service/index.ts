@@ -310,7 +310,7 @@ export const loginCreatorService = async ({username, password}:{username: string
 export const keepLoginService = async ({id, role}:{id: number, role: string}) => {
     const user = await prisma.user.findUnique({
         where: {
-            id,
+            user_id: id,
             role: {
                 name: role
             }
@@ -330,7 +330,7 @@ export const keepLoginService = async ({id, role}:{id: number, role: string}) =>
 export const changePasswordService = async ({id, role, password, oldPassword}:{id: number, role: string, password: string, oldPassword: string}) => {
     const user = await prisma.user.findUnique({
         where: {
-            id,
+            user_id: id,
             role: {
                 name: role
             }
@@ -346,7 +346,7 @@ export const changePasswordService = async ({id, role, password, oldPassword}:{i
 
     await prisma.user.update({
         where: {
-            id: id,
+            user_id: id,
             role_id: user.role_id
         },
         data: {

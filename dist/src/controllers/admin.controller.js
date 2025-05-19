@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.approvePendingQuestion = exports.getAllDivisions = exports.getAllUsers = exports.takeDownPost = exports.setMaintenanceMode = void 0;
+exports.takeDownQuestion = exports.approvePendingQuestion = exports.getAllDivisions = exports.getAllUsers = exports.setMaintenanceMode = void 0;
 const admin_service_1 = require("../services/admin.service");
 const setMaintenanceMode = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
@@ -26,18 +26,6 @@ const setMaintenanceMode = (req, res, next) => __awaiter(void 0, void 0, void 0,
     }
 });
 exports.setMaintenanceMode = setMaintenanceMode;
-const takeDownPost = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
-    try {
-        const { authorizationRole, usersId, postIds } = req.body;
-        if (!Array.isArray(postIds) || postIds.length === 0)
-            throw { msg: 'Please select at least one post to take down', status: 400 };
-        yield (0, admin_service_1.takeDownPostService)({ id: usersId, role: authorizationRole, postIds });
-    }
-    catch (error) {
-        next(error);
-    }
-});
-exports.takeDownPost = takeDownPost;
 const getAllUsers = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { authorizationRole, usersId } = req.body;
@@ -89,3 +77,19 @@ const approvePendingQuestion = (req, res, next) => __awaiter(void 0, void 0, voi
     }
 });
 exports.approvePendingQuestion = approvePendingQuestion;
+const takeDownQuestion = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { usersId, authorizationRole, question_ids } = req.body;
+        const questionIds = Array.isArray(question_ids) ? question_ids : [question_ids];
+        yield (0, admin_service_1.takeDownQuestionService)({ id: usersId, role: authorizationRole, question_ids: questionIds });
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Question taken down successfully'
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.takeDownQuestion = takeDownQuestion;

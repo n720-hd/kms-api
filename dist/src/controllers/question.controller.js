@@ -9,23 +9,29 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.deleteTag = exports.createNewTag = exports.getAllTags = exports.getAllQuestionsList = exports.createQuestion = void 0;
+exports.editQuestion = exports.likeQuestion = exports.createComment = exports.getAllNotifications = exports.deleteTag = exports.createNewTag = exports.getAllTags = exports.getAllQuestionsList = exports.createQuestion = void 0;
 const question_service_1 = require("../services/question.service");
 const createQuestion = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const { title, content, due_date, tag_ids, collaborator_type, collaborator_id, collaborator_division_id, usersId, authorizationRole } = req.body;
+        const { title, content, due_date, collaborator_type, collaborator_id, collaborator_division_id, usersId, authorizationRole, tag_ids } = req.body;
+        const tagIds = JSON.parse(req.body.tag_ids);
+        const collaboratorId = parseInt(collaborator_id);
+        const collaboratorDivisionId = parseInt(collaborator_division_id);
+        const files = req.files || [];
+        const attachments = Array.isArray(files) ? files : Object.values(files).flat();
         if (authorizationRole === 'admin' && authorizationRole === 'creator')
             throw { msg: 'Unauthorized', status: 401 };
         const question = yield (0, question_service_1.createQuestionService)({
             title,
             content,
             due_date,
-            tag_ids,
+            tag_ids: tagIds,
             collaborator_type,
-            collaborator_id,
-            collaborator_division_id,
+            collaborator_id: collaboratorId,
+            collaborator_division_id: collaboratorDivisionId,
             id: usersId,
-            role: authorizationRole
+            role: authorizationRole,
+            attachments: { attachments }
         });
         res.status(201).json({
             error: false,
@@ -40,7 +46,15 @@ const createQuestion = (req, res, next) => __awaiter(void 0, void 0, void 0, fun
 exports.createQuestion = createQuestion;
 const getAllQuestionsList = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
-        const questions = yield (0, question_service_1.getAllQuestionsListService)();
+        const search = req.query.search || '';
+        const sortBy = req.query.sortBy || 'created_at';
+        const sortOrder = (req.query.sortOrder || 'desc').toLowerCase();
+        const page = parseInt(req.query.page || '1');
+        const limit = parseInt(req.query.limit || '10');
+        const tags = req.query.tags ? req.query.tags.split(',') : [];
+        const status = req.query.status || '';
+        const filter = req.query.filter || 'all';
+        const questions = yield (0, question_service_1.getAllQuestionsListService)({ search, sortBy, sortOrder, page, limit, tags, status, filter });
         res.status(200).json({
             error: false,
             data: questions,
@@ -102,3 +116,71 @@ const deleteTag = (req, res, next) => __awaiter(void 0, void 0, void 0, function
     }
 });
 exports.deleteTag = deleteTag;
+const getAllNotifications = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { usersId, authorizationRole } = req.body;
+        const notification = yield (0, question_service_1.getAllNotificationsService)({ id: usersId, role: authorizationRole });
+        res.status(200).json({
+            error: false,
+            data: notification,
+            message: 'Notification retrieved'
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.getAllNotifications = getAllNotifications;
+const createComment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { question_id, comment, usersId, authorizationRole, parent_comment_id } = req.body;
+        const attachments = req.files || [];
+        if (!question_id || !comment)
+            throw { msg: 'Question and comment are required', status: 406 };
+        yield (0, question_service_1.createCommentService)({
+            question_id,
+            comment,
+            user_id: usersId,
+            attachments,
+            parent_comment_id
+        });
+        res.status(201).json({
+            error: false,
+            data: {},
+            message: 'Comment successfully created'
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.createComment = createComment;
+const likeQuestion = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const { usersId, authorizationRole, question_id, answer_id } = req.body;
+        yield (0, question_service_1.likeQuestionService)({
+            id: usersId,
+            role: authorizationRole,
+            question_id,
+            answer_id
+        });
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Successfully liked'
+        });
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.likeQuestion = likeQuestion;
+const editQuestion = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const {} = req.body;
+    }
+    catch (error) {
+        next(error);
+    }
+});
+exports.editQuestion = editQuestion;

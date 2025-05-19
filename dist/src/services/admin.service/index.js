@@ -9,7 +9,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.approvePendingQuestionService = exports.getAllDivisionsService = exports.getAllUsersService = exports.takeDownPostService = exports.setMaintenanceModeService = void 0;
+exports.takeDownQuestionService = exports.approvePendingQuestionService = exports.getAllDivisionsService = exports.getAllUsersService = exports.setMaintenanceModeService = void 0;
 const connection_1 = require("../../../connection");
 const setMaintenanceModeService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ maintenanceMode, id, role }) {
     yield connection_1.prisma.user.findUnique({
@@ -32,26 +32,6 @@ const setMaintenanceModeService = (_a) => __awaiter(void 0, [_a], void 0, functi
     });
 });
 exports.setMaintenanceModeService = setMaintenanceModeService;
-const takeDownPostService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ id, role, postIds }) {
-    if (role !== 'admin')
-        throw { msg: 'You are unauthorized to perform this action', status: 401 };
-    postIds.length > 1 ? yield connection_1.prisma.question.updateMany({
-        where: {
-            question_id: { in: postIds }
-        },
-        data: {
-            deleted_at: new Date()
-        }
-    }) : yield connection_1.prisma.question.update({
-        where: {
-            question_id: postIds[0]
-        },
-        data: {
-            deleted_at: new Date()
-        }
-    });
-});
-exports.takeDownPostService = takeDownPostService;
 const getAllUsersService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ id, role }) {
     const users = yield connection_1.prisma.user.findMany({
         where: {
@@ -107,3 +87,33 @@ const approvePendingQuestionService = (_a) => __awaiter(void 0, [_a], void 0, fu
     }));
 });
 exports.approvePendingQuestionService = approvePendingQuestionService;
+const takeDownQuestionService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ id, role, question_ids }) {
+    if (role !== 'admin') {
+        yield connection_1.prisma.question.updateMany({
+            where: {
+                question_id: { in: question_ids },
+                creator_id: id,
+                deleted_at: null,
+                is_published: true
+            },
+            data: {
+                deleted_at: new Date(),
+                is_published: false
+            }
+        });
+    }
+    else if (role === 'admin') {
+        yield connection_1.prisma.question.updateMany({
+            where: {
+                question_id: { in: question_ids },
+                deleted_at: null,
+                is_published: true,
+            },
+            data: {
+                deleted_at: new Date(),
+                is_published: false
+            }
+        });
+    }
+});
+exports.takeDownQuestionService = takeDownQuestionService;

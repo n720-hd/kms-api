@@ -1,5 +1,6 @@
 import { Request, Response, NextFunction } from "express";
-import { createNewTagService, createQuestionService, deleteTagService, getAllNotificationsService, getAllQuestionsListService, getAllTagsService, createCommentService, likeQuestionService } from "@/services/question.service";
+import { createNewTagService, createQuestionService, deleteTagService, getAllNotificationsService, getAllQuestionsListService, getAllTagsService, createCommentService, likeQuestionService, editQuestionService } from "@/services/question.service";
+import { deleteFiles } from "@/utils/delete.files";
 
 export const createQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -41,6 +42,16 @@ export const createQuestion = async (req: Request, res: Response, next: NextFunc
             message: 'Question successfully created'
         })
     } catch (error) {
+        if(req.files){
+            const files = Array.isArray(req.files) ? req.files : Object.values(req.files).flat()
+            await deleteFiles({
+                fileToDelete: {
+                    file: files.map(file => ({
+                        path: file.path
+                    }))
+                }
+            })
+        }
         next(error)
     }
 }
@@ -135,7 +146,7 @@ export const getAllNotifications = async (req: Request, res: Response, next: Nex
 
 export const createComment = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {question_id, comment, usersId, authorizationRole, parent_comment_id} = req.body;
+        const {question_id, comment, usersId, authorizationRole, parent_comment_id, answer_id} = req.body;
         const attachments = req.files as Express.Multer.File[] || [];
 
         if(!question_id || !comment) throw {msg: 'Question and comment are required', status: 406};
@@ -145,7 +156,8 @@ export const createComment = async (req: Request, res: Response, next: NextFunct
             comment,
             user_id: usersId,
             attachments,
-            parent_comment_id
+            parent_comment_id,
+            answer_id
         })
 
         res.status(201).json({
@@ -154,6 +166,16 @@ export const createComment = async (req: Request, res: Response, next: NextFunct
             message: 'Comment successfully created'
         })
     } catch (error) {
+        if(req.files){
+            const files = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
+            await deleteFiles({
+                fileToDelete: {
+                    file: files.map(file => ({
+                        path: file.path
+                    }))
+                }
+            })
+        }
         next(error)
     }
 }
@@ -181,7 +203,74 @@ export const likeQuestion = async (req: Request, res: Response, next: NextFuncti
 
 export const editQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
+        const {question_id, title, content, due_date, tag_ids, collaborator_type, collaborator_id, collaborator_division_id, usersId, attachmentsToDelete, tagsToDelete, authorizationRole} = req.body;
+        
+        if(!question_id) throw {msg:'Invalid Question', status: 406}
+        if (due_date) {
+            const parsedDueDate = new Date(due_date);
+            if(isNaN(parsedDueDate.getTime())) throw {msg: 'Invalid due Date format', status: 406};
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            parsedDueDate.setHours(0, 0, 0, 0);
+
+            if(parsedDueDate < today) throw {msg: 'Due date cannot be in the past', status: 406};
+        }
+
+        const tagIds = tag_ids? JSON.parse(tag_ids) : [];
+        const questionId = parseInt(question_id)
+        const attachmentsToBeDeleted = attachmentsToDelete? JSON.parse(attachmentsToDelete) : [];
+        const tagsToBeDeleted = tagsToDelete ? JSON.parse(tagsToDelete) : [];
+        const collaboratorId = collaborator_id ? parseInt(collaborator_id) : undefined;
+        const collaboratorDivisionId = collaborator_division_id ? parseInt(collaborator_division_id) : undefined;
+
+        const files = req.files || [];
+        const attachments = Array.isArray(files) ? files : Object.values(files).flat();
+
+        const editedQuestion = await editQuestionService({
+            title,
+            content,
+            question_id: questionId,
+            tag_ids: tagIds,
+            due_date: due_date,
+            collaborator_type,
+            collaborator_id: collaboratorId,
+            collaborator_division_id: collaboratorDivisionId,
+            attachments: {attachments},
+            id: usersId,
+            role: authorizationRole,
+            attachmentsToDelete: attachmentsToBeDeleted,
+            tagsToDelete: tagsToBeDeleted,
+        })
+
+        res.status(200).json({
+            error: false,
+            data: editedQuestion,
+            message: 'Success'
+        })
+    } catch (error) {
+        if(req.files){
+            const files = Array.isArray(req.files) ? req.files : Object.values(req.files).flat();
+            await deleteFiles({
+                fileToDelete: {
+                    file: files.map(file => ({
+                        path: file.path
+                    })
+                )}
+            })
+        }
+        next(error)
+    }
+}
+
+export const createAnswer = async(req: Request, res: Response, next: NextFunction) => {
+    try {
         const {} = req.body
+
+        res.status(201).json({
+            error: false,
+            data: {},
+            message: 'Answer created'
+        })
     } catch (error) {
         next(error)
     }

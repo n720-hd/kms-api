@@ -3,7 +3,7 @@ import { prisma } from "connection"
 export const setMaintenanceModeService = async ({maintenanceMode, id, role}: {maintenanceMode: boolean, id: number, role: string}) => {
     await prisma.user.findUnique({
         where: {
-            id,
+            user_id:id,
             role: {
                 name: role
             }
@@ -31,7 +31,7 @@ export const getAllUsersService = async ({id, role}: {id: number, role: string})
             }
         },
         select: {
-            id: true,
+            user_id: true,
             username: true,
             email: true
         }
@@ -42,7 +42,7 @@ export const getAllUsersService = async ({id, role}: {id: number, role: string})
 export const getAllDivisionsService = async ({id, role}: {id: number, role: string}) => {
   const admin = await prisma.user.findUnique({
     where: {
-        id: id,
+        user_id: id,
         role: {
             name: role
         }
@@ -105,4 +105,147 @@ export const takeDownQuestionService = async ({id, role, question_ids}:{id: numb
         }
         })
     }
+}
+
+export const getAllPendingAnswerService = async({id, role}:{id: number, role: string}) => {
+    const isAuthorized = await prisma.user.findUnique({
+        where: {
+            user_id: id,
+            role: {
+                name: 'admin'
+            }
+        }
+    })
+    if(!isAuthorized) throw {msg: 'Invalid credentials', status: 406}
+
+    return await prisma.answer.findMany({
+        where: {
+            is_accepted: false
+        }
+    })
+}
+
+export const approvePendingAnswerService = async({id, role, answer_ids}:{id: number, role: string, answer_ids: number[]}) => {
+    const isAuthorized = await prisma.user.findUnique({
+        where: {
+            user_id: id,
+            role: {
+                name: 'admin'
+            }
+        }
+    })
+
+    if(!isAuthorized) throw {msg: 'Invalid credentials', status: 406};
+
+    await prisma.$transaction(async (tx) => {
+         await tx.answer.updateMany({
+            where: {
+                answer_id: {in: answer_ids}
+            },
+            data: {
+                is_accepted: true
+            }
+        })
+
+        const answers = await tx.answer.findMany({
+            where: {answer_id: {in: answer_ids}
+        },include: {
+            user: true,
+            question: {
+                include: {
+                    creator: {
+                        select: {
+                            user_id: true
+                        }
+                    }
+                }
+            }
+        }
+        })
+        await Promise.all(
+        answers.map(answer => 
+             tx.notification.create({
+                data: {
+                    user_id: answer.user_id,
+                    content: `Your answer to ${answer.question.title} has been accepted`,
+                    notification_type: 'ANSWER_ACCEPTED'
+                }
+            })
+        )
+       )
+
+    })
+}
+
+export const getUserRoleService = async({id, role}:{id: number, role: string}) => {
+    if(role !== 'admin') throw {msg: 'Invalid credentials', status: 406}
+    const isAdmin = await prisma.user.findUnique({
+        where: {
+            user_id: id,
+            role: {
+                name: 'admin'
+            }
+        }
+    })
+    if(!isAdmin) throw {msg: 'Invalid credentials', status: 406}
+
+    return await prisma.role.findMany()
+}
+
+export const setUserRoleService = async({id, role, user_id, role_id}:{id: number, role: string, user_id: number, role_id: number}) => {
+    if(role !== 'admin') throw {msg: 'Invalid credentials', status: 406}
+    const isAdmin = await prisma.user.findUnique({
+        where: {
+            user_id: id,
+            role: {
+                name: 'admin'
+            }
+        }
+    })
+    if(!isAdmin) throw {msg: 'Invalid credentials', status: 406};
+    
+    const isRoleValid = await prisma.role.findUnique({
+        where: {
+            id: role_id
+        }
+    })
+    if(!isRoleValid) throw {msg: 'Invalid role, please input a valid one', status: 406};
+
+    await prisma.user.update({
+        where: {
+            user_id
+        },
+        data: {
+            role_id
+        }
+    })
+}
+
+export const setUserDivisionService = async({id, role, user_id, division_id}:{id: number, role: string, user_id: number, division_id: number}) => {
+    if(role !== 'admin') throw {msg: 'Invalid credentials', status: 406}
+    const isAdmin = await prisma.user.findUnique({
+        where: {
+            user_id: id,
+            role: {
+                name: 'admin'
+            }
+        }
+    })
+    if(!isAdmin) throw {msg: 'Invalid credentials', status: 406};
+
+    const isDivisionValid = await prisma.division.findUnique({
+        where: {
+            id: division_id
+        }
+    })
+    if(!isDivisionValid) throw {msg: 'Invalid division', status: 406};
+
+    await prisma.user.update({
+        where: {
+            user_id
+        },
+        data: {
+            division_id: division_id
+        }
+    })
 }
