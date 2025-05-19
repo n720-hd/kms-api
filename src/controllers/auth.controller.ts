@@ -66,7 +66,9 @@ export const registerCreator = async (req: Request, res: Response, next: NextFun
 
 export const createAdmin = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { username, password } = req.body;
+        const { username, firstName, lastName, password } = req.body;
+        if(!firstName) throw {msg: 'First name required', status: 406};
+        if(!lastName) throw {msg: 'Last name required', status: 406};
         if (!username  || !password) throw { msg: 'All fields are required', status: 400 };
         const {token} = req.query as {token: string};
 
@@ -75,7 +77,9 @@ export const createAdmin = async (req: Request, res: Response, next: NextFunctio
         await createAdminService({
             username,
             password: hashedPassword,
-            token
+            token,
+            firstName,
+            lastName
         })
 
         res.status(201).json({
@@ -90,14 +94,18 @@ export const createAdmin = async (req: Request, res: Response, next: NextFunctio
 
 export const createUser = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const { username, password } = req.body;
+        const { username, password, firstName, lastName } = req.body;
+        if(!firstName) throw {msg: 'First name required', status: 406};
+        if(!lastName) throw {msg: 'Last name required', status: 406};
         if (!username  || !password) throw { msg: 'All fields are required', status: 400 };
         const {token} = req.query as {token: string};
         const hashedPassword = await hashPassword(password);
         await createUserService({
             username,
             password: hashedPassword,
-            token
+            token,
+            firstName,
+            lastName
         })
         res.status(201).json({
             message: 'User registered successfully',
@@ -111,14 +119,18 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 
 export const createCreator = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {username, password} = req.body;
+        const {username, password, firstName, lastName} = req.body;
+        if(!firstName) throw {msg: 'First name required', status: 406};
+        if(!lastName) throw {msg: 'Last name required', status: 406};
         if(!username || !password) throw {msg: 'All fields are required', status: 400};
         const {token} = req.query as {token: string};
         const hashedPassword = await hashPassword(password);
         await createCreatorService({
             username,
             password: hashedPassword,
-            token
+            token,
+            firstName,
+            lastName
         })
         res.status(201).json({
             message: 'Creator registered successfully',
@@ -149,6 +161,8 @@ export const loginAdmin = async (req: Request, res: Response, next: NextFunction
                 id: admin.user_id,
                 email: admin.email,
                 username: admin.username,
+                first_name: admin.first_name,
+                last_name: admin.last_name,
                 role: admin.role.name,
                 token: token,
             },
@@ -174,6 +188,8 @@ export const loginCreator = async (req: Request, res: Response, next: NextFuncti
             data: {
                 id: creator.user_id,
                 email: creator.email,
+                first_name: creator.first_name,
+                last_name: creator.last_name,
                 username: creator.username,
                 role: creator.role.name,
                 token: token,
@@ -199,6 +215,8 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
                 id: user.user_id,
                 email: user.email, 
                 username: user.username,
+                first_name: user.first_name,
+                last_name: user.last_name,
                 role: user.role.name,
                 token: token,
             },

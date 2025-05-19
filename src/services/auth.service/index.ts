@@ -129,7 +129,7 @@ export const registerCreatorService = async (email: string) => {
     });
 }
 
-export const createAdminService = async ({username, password, token}: {username: string, password: string, token: string}) => {
+export const createAdminService = async ({username, password, token, firstName, lastName}: {username: string, password: string, token: string, firstName: string, lastName: string}) => {
     const admin = await prisma.user.findUnique({
         where: {
             token,
@@ -158,12 +158,14 @@ export const createAdminService = async ({username, password, token}: {username:
             username,
             password,
             token: null,
-            role_id: adminRole!.id
+            role_id: adminRole!.id,
+            first_name: firstName,
+            last_name: lastName
         }   
     })
 }
 
-export const createUserService = async ({username, password, token}: {username: string, password: string, token: string}) => {
+export const createUserService = async ({username, password, token, firstName, lastName}: {username: string, password: string, token: string, firstName: string, lastName: string}) => {
     const user = await prisma.user.findUnique({
         where: {
             token,
@@ -191,12 +193,14 @@ export const createUserService = async ({username, password, token}: {username: 
             username,
             password,
             token: null,
-            role_id: userRole!.id
+            role_id: userRole!.id,
+            first_name: firstName,
+            last_name: lastName
         }   
     })
 }
 
-export const createCreatorService = async ({username, password, token}: {username: string, password: string, token: string}) => {
+export const createCreatorService = async ({username, password, token, firstName, lastName}: {username: string, password: string, token: string, firstName: string, lastName: string}) => {
     const creator = await prisma.user.findUnique({
         where: {
             token,
