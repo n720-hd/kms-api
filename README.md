@@ -109,30 +109,30 @@ A comprehensive REST API for a Knowledge Management System built with Node.js, E
 
 Create `.env.development` file with the following variables:
 
+**⚠️ SECURITY WARNING: Never commit your `.env` files to version control. Add them to `.gitignore`!**
+
 ```env
 # Server Configuration
 NODE_ENV=development
 PORT=4700
 
 # Database Configuration
-DATABASE_URL="postgresql://user123:inipassword@localhost:5432/kms"
+DATABASE_URL="postgresql://your_db_user:your_db_password@localhost:5432/your_database_name"
 
 # PostgreSQL Docker Configuration (for docker-compose)
-POSTGRES_DB=kms
-POSTGRES_USER=user123
-POSTGRES_PASSWORD=inipassword
+POSTGRES_DB=your_database_name
+POSTGRES_USER=your_db_user
+POSTGRES_PASSWORD=your_secure_password
 POSTGRES_PORT=5432
 
 # JWT Configuration
-JWT_SECRET=your-super-secret-jwt-key
-JWT_EXPIRES_IN=7d
+SECRET_KEY_GENERATE_TOKEN=your-super-secret-generate-key
+SECRET_KEY_ACCESS_TOKEN=your-super-secret-access-key
 
 # Email Configuration (Nodemailer)
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_USER=your-email@gmail.com
-EMAIL_PASS=your-app-password
-EMAIL_FROM=your-email@gmail.com
+TRANSPORTER_SERVICE=gmail
+TRANSPORTER_USER=your-email@gmail.com
+TRANSPORTER_KEY=your-app-password
 
 # AWS S3 Configuration (Optional)
 AWS_ACCESS_KEY_ID=your-aws-access-key
@@ -142,8 +142,7 @@ AWS_S3_BUCKET_NAME=your-bucket-name
 AWS_CLOUDFRONT_DOMAIN=https://your-cloudfront-domain.com
 
 # AI Integration (Optional)
-OPENAI_API_KEY=your-openai-api-key
-AI_MODEL=gpt-3.5-turbo
+OPENROUTER_API_KEY=your-openrouter-api-key
 
 # Frontend URL (for CORS)
 FRONTEND_URL=http://localhost:3000
@@ -176,9 +175,9 @@ npx prisma db seed
 1. Install PostgreSQL
 2. Create database:
    ```sql
-   CREATE DATABASE kms;
-   CREATE USER user123 WITH PASSWORD 'inipassword';
-   GRANT ALL PRIVILEGES ON DATABASE kms TO user123;
+   CREATE DATABASE your_database_name;
+   CREATE USER your_db_user WITH PASSWORD 'your_secure_password';
+   GRANT ALL PRIVILEGES ON DATABASE your_database_name TO your_db_user;
    ```
 3. Run migrations:
    ```bash
