@@ -13,7 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.downloadAttachmentService = void 0;
-const connection_1 = require("../../../connection");
+const connection_1 = require("connection");
 const promises_1 = __importDefault(require("fs/promises"));
 const downloadAttachmentService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ attachment_id }) {
     const attachmentId = Number(attachment_id);

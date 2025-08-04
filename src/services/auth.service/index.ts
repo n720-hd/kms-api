@@ -1,4 +1,4 @@
-import prisma from "@/prisma";
+import {prisma} from "../../../connection";
 import jwt from "jsonwebtoken";
 import fs from 'fs';
 import { compile } from "handlebars";
@@ -19,14 +19,14 @@ export const registerAdminService = async (email:string) => {
     const registerAdminToken = jwt.sign({email}, '3214', {expiresIn: '1h'})
     const adminRoleId = await prisma.role.findUnique({
         where: { name: 'admin' },
-        select: { id: true, name: true },
+        select: { role_id: true, name: true },
     })   
 const createdAdmin = await prisma.user.create({
     data: {
         email,
         token: registerAdminToken,
         role: {
-            connect: { id: adminRoleId?.id }
+            connect: { role_id: adminRoleId?.role_id }
         },
         password: 'a43201234',
     }
@@ -57,11 +57,14 @@ export const registerUserService = async (email: string) => {
         }
     })
 
-    if (user) throw {msg:'User already exists', status: 400}  
+    if (user) throw {msg:'User already exists', status: 400};
+    if (!email) throw {msg:'Email is required', status: 400};
+    if(!email.includes('@')) throw {msg:'Email is not valid', status: 400};
+
     const registerUserToken = jwt.sign({email}, '3214', {expiresIn: '1h'})
     const userRoleId = await prisma.role.findUnique({
         where: { name: 'user' },
-        select: { id: true, name: true },
+        select: { role_id: true, name: true },
     })
 
     const createdUser = await prisma.user.create({
@@ -69,7 +72,7 @@ export const registerUserService = async (email: string) => {
             email,
             token: registerUserToken,
             role: {
-                connect: { id: userRoleId?.id }
+                connect: { role_id: userRoleId?.role_id }
             },
             password: 'a432012345',
         }
@@ -102,14 +105,14 @@ export const registerCreatorService = async (email: string) => {
     const registerCreatorToken = jwt.sign({email}, '3214', {expiresIn: '1h'})
     const creatorRoleId = await prisma.role.findUnique({
         where: { name: 'creator' },
-        select: { id: true, name: true },
+        select: { role_id: true, name: true },
     })
     const createdCreator = await prisma.user.create({
         data: {
             email,
             token: registerCreatorToken,
             role: {
-                connect: { id: creatorRoleId?.id }
+                connect: { role_id: creatorRoleId?.role_id }
             }, 
             password: 'a432012345',
         }
@@ -146,7 +149,7 @@ export const createAdminService = async ({username, password, token, firstName, 
             name: 'admin'
         },
         select: {
-            id: true
+            role_id: true
         }
     })
 
@@ -158,7 +161,7 @@ export const createAdminService = async ({username, password, token, firstName, 
             username,
             password,
             token: null,
-            role_id: adminRole!.id,
+            role_id: adminRole!.role_id,
             first_name: firstName,
             last_name: lastName
         }   
@@ -169,9 +172,7 @@ export const createUserService = async ({username, password, token, firstName, l
     const user = await prisma.user.findUnique({
         where: {
             token,
-            role: {
-                name: 'user'
-            }
+           
         }
     })
 
@@ -181,7 +182,7 @@ export const createUserService = async ({username, password, token, firstName, l
             name: 'user'
         },
         select: {
-            id: true
+            role_id: true
         }
     })
     
@@ -193,7 +194,7 @@ export const createUserService = async ({username, password, token, firstName, l
             username,
             password,
             token: null,
-            role_id: userRole!.id,
+            role_id: userRole!.role_id,
             first_name: firstName,
             last_name: lastName
         }   
@@ -215,7 +216,7 @@ export const createCreatorService = async ({username, password, token, firstName
             name: 'creator'
         },
         select: {
-            id: true, name: true
+            role_id: true, name: true
         }
     })
     await prisma.user.update({
@@ -226,7 +227,7 @@ export const createCreatorService = async ({username, password, token, firstName
             username,
             password,
             token: null,
-            role_id: creatorRole!.id        
+            role_id: creatorRole!.role_id        
         }
     })
 }
@@ -241,7 +242,7 @@ export const loginAdminService = async ({username, password}:{username: string, 
         },include: {
             role: {
                 select: {
-                    id: true,
+                    role_id: true,
                     name: true
                 }
             }
@@ -251,6 +252,7 @@ export const loginAdminService = async ({username, password}:{username: string, 
     if(admin?.role.name !== 'admin') throw {msg: 'Invalid User', status: 400};
     if(!admin) throw {msg: 'Invalid User', status: 400};
     if(!admin.password) throw {msg: 'Password not set', status: 400};
+    console.log('admin from service :', admin)
 
     const isPasswordValid = await comparePassword(password, admin.password);
     if(!isPasswordValid) throw {msg: 'Invalid Password', status: 400};
@@ -268,14 +270,13 @@ export const loginUserService = async ({username, password}:{username: string, p
         },include: {
             role: {
                 select: {
-                    id: true,
+                    role_id: true,
                     name: true
                 }
             }
         }
     })
 
-    if(user?.role.name !== 'user') throw {msg: 'Invalid User', status: 400};
     if(!user) throw {msg: 'Invalid User', status: 400};
     if(!user.password) throw {msg: 'Password not set', status: 400};
 
@@ -296,7 +297,7 @@ export const loginCreatorService = async ({username, password}:{username: string
         include: {
             role: {
                 select: {
-                    id: true,
+                    role_id: true,
                     name: true
                 }
             }
@@ -321,7 +322,7 @@ export const keepLoginService = async ({id, role}:{id: number, role: string}) =>
         },
         include: {
             role: {
-                select: {id: true, name: true}
+                select: {role_id: true, name: true}
             }
         }
     })
@@ -355,6 +356,63 @@ export const changePasswordService = async ({id, role, password, oldPassword}:{i
         },
         data: {
             password: hashedPassword
+        }
+    })
+}
+
+export const forgetPasswordService = async(email: string) => {
+    const user = await prisma.user.findUnique({
+        where: {
+            email,
+        },
+        select: {
+            user_id: true,
+            email: true,
+            username: true,
+            token: true,
+            role: {
+                select: {
+                    role_id: true,
+                    name: true
+                }
+            }
+        }
+    })
+    if(!user) throw {msg: 'Invalid user', status: 400};
+
+    const token = jwt.sign({email}, '3214', {expiresIn: '1h'})
+    await prisma.user.update({
+        where: {
+            email: email,
+            user_id: user.user_id
+        },
+        data: {
+            token: token
+        }
+    })
+
+    const template = fs.readFileSync('src/public/registration.html', 'utf-8');
+    const url = `http://localhost:3000/auth/forget-password?token=${user.token}`;
+    const compiledEmail = compile(template);
+    const personalizedEmail = compiledEmail({
+        name: user.email,
+        url: url,
+        role: user.role.name
+    });
+    await transporter.sendMail({
+        to: email,
+        subject: 'Reset Password',
+        html: personalizedEmail
+    });
+}
+
+export const resetPasswordService = async({password, token}:{password: string, token: string}) => {
+    await prisma.user.update({
+        where: {
+            token
+        },
+        data: {
+            password
         }
     })
 }

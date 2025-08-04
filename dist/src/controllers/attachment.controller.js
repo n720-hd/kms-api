@@ -13,7 +13,7 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.downloadAttachment = void 0;
-const attachment_service_1 = require("../services/attachment.service");
+const attachment_service_1 = require("@/services/attachment.service");
 const path_1 = __importDefault(require("path"));
 const downloadAttachment = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {

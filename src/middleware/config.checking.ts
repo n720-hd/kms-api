@@ -4,7 +4,7 @@ import { prisma } from "connection";
 export const configChecking = async (req: Request, res: Response, next: NextFunction) => {
     try {
         
-        if(req.path.includes('/admin')) return next();
+        if(req.path.includes('/admin') || req.path === ('/api/auth') || req.path === ('/api/auth/login') || req.path === ('/api/auth/logout')) return next();
 
         const is_maintenance = await prisma.config.findFirst({
             where: {

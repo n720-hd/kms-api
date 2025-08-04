@@ -1,7 +1,8 @@
-import prisma from "@/prisma"
-import { changePasswordService, createAdminService, createCreatorService, createUserService, keepLoginService, loginAdminService, loginCreatorService, loginUserService, registerAdminService, registerCreatorService, registerUserService } from "@/services/auth.service"
+import {prisma} from "../../connection/"
+import { changePasswordService, createAdminService, createCreatorService, createUserService, forgetPasswordService, keepLoginService, loginAdminService, loginCreatorService, loginUserService, registerAdminService, registerCreatorService, registerUserService, resetPasswordService } from "@/services/auth.service"
 import { hashPassword } from "@/utils/hash.password"
 import { generateToken } from "@/utils/jwt"
+import { generateSignedUrl } from "@/utils/s3"
 import { NextFunction,Request,Response } from "express"
 
 export const authUser = async (req: Request, res: Response, next: NextFunction) => {
@@ -29,6 +30,7 @@ export const registerAdmin = async (req: Request, res: Response, next: NextFunct
 
         res.status(200).json({
             message: 'Success',
+            data: {},
             error: false
         })
     } catch (error) {
@@ -43,6 +45,12 @@ export const registerUser = async (req: Request, res: Response, next: NextFuncti
         if(!email) throw {msg: 'Email is required', status: 400};
 
         await registerUserService(email);
+
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'A verification email has been sent to your email address'
+        })
     } catch (error) {
         next(error)
     }
@@ -153,9 +161,8 @@ export const loginAdmin = async (req: Request, res: Response, next: NextFunction
         })
         
         console.log('admin: ',admin);
-        
         const token = await generateToken({id: admin.user_id, role: admin.role.name})
-
+        res.cookie('token', token, {maxAge: 3600000, httpOnly: true, secure: true, sameSite: 'strict'})
         res.status(200).json({
             message: 'Success',
             data: {
@@ -210,6 +217,7 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
             password
         })
         const token = await generateToken({id: user.user_id, role: user.role.name})
+        res.cookie('token', token, {maxAge: 3600000, httpOnly: true, secure: true, sameSite: 'strict'})
         res.status(200).json({
             message: 'Success',
             data: {
@@ -219,7 +227,7 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
                 first_name: user.first_name,
                 last_name: user.last_name,
                 role: user.role.name,
-                token: token,
+                profile_picture: user.profile_picture
             },
             error: false
         })
@@ -236,6 +244,10 @@ export const keepLogin = async (req: Request, res: Response, next: NextFunction)
 
         const user = await keepLoginService({id: usersId, role: authorizationRole})
 
+        const profilePictureUrl = user.profile_picture 
+            ? await generateSignedUrl(user.profile_picture, 86400)
+            : null;
+
         res.status(200).json({
             message: 'Success',
             data: {
@@ -243,6 +255,9 @@ export const keepLogin = async (req: Request, res: Response, next: NextFunction)
                 email: user.email,
                 username: user.username,
                 role: user.role.name,
+                first_name: user.first_name,
+                last_name: user.last_name,
+                profile_picture: profilePictureUrl
             }
         })
     } catch (error) {
@@ -260,6 +275,56 @@ export const changePassword = async (req: Request, res: Response, next: NextFunc
             message: 'Password changed successfully',
             data: null,
             error: false
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const forgetPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {email} = req.body
+        if(!email) throw {msg: 'Email is required', status: 400};
+        if(!email.includes('@')) throw {msg: 'Invalid email', status: 400};
+
+        await forgetPasswordService(email)
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Success'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const resetPassword = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {password} = req.body;
+        const {token} = req.query as {token: string};
+
+        const hashedPassword = await hashPassword(password)
+
+        await resetPasswordService({password: hashedPassword, token})
+
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Password successfully resetted'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+ 
+export const logout = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        res.clearCookie('token', {httpOnly: true, secure: true, sameSite: 'strict'})
+
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Successfully logged out'
         })
     } catch (error) {
         next(error)

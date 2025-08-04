@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setUserDivision = exports.setUserRole = exports.getUserRole = exports.approvePendingAnswer = exports.getAllPendingAnswer = exports.takeDownQuestion = exports.approvePendingQuestion = exports.getAllDivisions = exports.getAllUsers = exports.setMaintenanceMode = void 0;
-const admin_service_1 = require("../services/admin.service");
+const admin_service_1 = require("@/services/admin.service");
 const setMaintenanceMode = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { authorizationRole, usersId, maintenanceMode } = req.body;

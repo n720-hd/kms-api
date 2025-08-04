@@ -4,3 +4,6 @@ node_modules
 .env.development
 .env.production
 .vercel
+todo.md
+CLAUDE.md
+AWS_S3_INTEGRATION_GUIDE.md

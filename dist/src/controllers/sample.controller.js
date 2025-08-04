@@ -1,6 +1,6 @@
 "use strict";
 // import { Request, Response } from 'express';
-// import prisma from '../prisma';
+// import prisma from '@/prisma';
 // export class SampleController {
 //   async getSampleData(req: Request, res: Response) {
 //     const sampleData = await prisma.sample.findMany();

@@ -13,12 +13,12 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.changePasswordService = exports.keepLoginService = exports.loginCreatorService = exports.loginUserService = exports.loginAdminService = exports.createCreatorService = exports.createUserService = exports.createAdminService = exports.registerCreatorService = exports.registerUserService = exports.registerAdminService = void 0;
-const prisma_1 = __importDefault(require("../../prisma"));
+const prisma_1 = __importDefault(require("@/prisma"));
 const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
 const fs_1 = __importDefault(require("fs"));
 const handlebars_1 = require("handlebars");
-const transporter_1 = require("../../utils/transporter");
-const hash_password_1 = require("../../utils/hash.password");
+const transporter_1 = require("@/utils/transporter");
+const hash_password_1 = require("@/utils/hash.password");
 const registerAdminService = (email) => __awaiter(void 0, void 0, void 0, function* () {
     const admin = yield prisma_1.default.user.findUnique({
         where: {
@@ -264,6 +264,7 @@ const loginAdminService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ u
         throw { msg: 'Invalid User', status: 400 };
     if (!admin.password)
         throw { msg: 'Password not set', status: 400 };
+    console.log('admin from service :', admin);
     const isPasswordValid = yield (0, hash_password_1.comparePassword)(password, admin.password);
     if (!isPasswordValid)
         throw { msg: 'Invalid Password', status: 400 };

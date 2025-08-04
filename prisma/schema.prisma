@@ -1,42 +1,49 @@
 generator client {
   provider = "prisma-client-js"
-  output = "./client"
+  output   = "../prisma_client"
 }
 
 datasource db {
-  provider = "mysql"
+  provider = "postgresql"
   url      = env("DATABASE_URL")
 }
 
 model User {
-  first_name         String?
-  last_name          String?  
-  username           String?
-  password           String
-  token              String?        @unique
-  created_at         DateTime       @default(now())
-  updated_at         DateTime?      @updatedAt
-  role_id            Int
-  email              String         @unique
-  division_id        Int?
-  user_id                 Int            @id @default(autoincrement())
-  profile_picture    String? 
-  answers            Answer[]
-  comments           Comment[]
-  likes              Like[]
-  notifications      Notification[]
-  assigned_questions Question[]     @relation("AssignedTo")
-  created_questions  Question[]     @relation("CreatedBy")
-  division           Division?      @relation(fields: [division_id], references: [id])
-  role               Role           @relation(fields: [role_id], references: [id])
+  first_name           String?
+  last_name            String?
+  username             String?
+  password             String
+  token                String?               @unique
+  created_at           DateTime              @default(now())
+  updated_at           DateTime?             @updatedAt
+  role_id              Int
+  email                String                @unique
+  division_id          Int?
+  user_id              Int                   @id @default(autoincrement())
+  profile_picture      String?
+  deleted_at           DateTime?
+  is_active            Boolean               @default(true)
+  answers              Answer[]
+  comments             Comment[]
+  likes                Like[]
+  notifications        Notification[]
+  assigned_questions   Question[]            @relation("AssignedTo")
+  created_questions    Question[]            @relation("CreatedBy")
+  division             Division?             @relation(fields: [division_id], references: [id])
+  role                 Role                  @relation(fields: [role_id], references: [role_id])
+  SavedQuestion        SavedQuestion[]
+  QuestionFeedBack     QuestionFeedBack[]
+  Conversations        Conversation[]
+  ConversationMessages ConversationMessage[]
+  ChatMessages         ChatMessage[]
 
-  @@index([division_id], map: "users_division_id_fkey")
-  @@index([role_id], map: "users_role_id_fkey")
+  @@index([division_id], map: "users_division_id_idx")
+  @@index([role_id], map: "users_role_id_idx")
   @@map("users")
 }
 
 model Role {
-  id         Int       @id @default(autoincrement())
+  role_id    Int       @id @default(autoincrement())
   name       String    @unique
   status     Boolean   @default(true)
   created_at DateTime  @default(now())
@@ -60,14 +67,14 @@ model Division {
 }
 
 model Question {
-  question_id              Int               @id @default(autoincrement())
+  question_id              Int                @id @default(autoincrement())
   title                    String
-  content                  String            @db.Text
-  status                   QuestionStatus    @default(PENDING)
-  created_at               DateTime          @default(now())
+  content                  String             @db.Text
+  status                   QuestionStatus     @default(PENDING)
+  created_at               DateTime           @default(now())
   due_date                 DateTime?
-  is_published             Boolean           @default(false)
-  updated_at               DateTime?         @updatedAt
+  is_published             Boolean            @default(true)
+  updated_at               DateTime?          @updatedAt
   deleted_at               DateTime?
   collaborator_id          Int?
   collaborator_division_id Int?
@@ -77,16 +84,51 @@ model Question {
   comments                 Comment[]
   likes                    Like[]
   notifications            Notification[]
-  collaborator_division    Division?         @relation("AssignedToDivision", fields: [collaborator_division_id], references: [id])
-  collaborator             User?             @relation("AssignedTo", fields: [collaborator_id], references: [user_id])
-  creator                  User              @relation("CreatedBy", fields: [creator_id], references: [user_id])
+  collaborator_division    Division?          @relation("AssignedToDivision", fields: [collaborator_division_id], references: [id])
+  collaborator             User?              @relation("AssignedTo", fields: [collaborator_id], references: [user_id])
+  creator                  User               @relation("CreatedBy", fields: [creator_id], references: [user_id])
   tags                     TagsOnQuestions[]
-  attachment               Attachment[]      
+  attachment               Attachment[]
+  SavedQuestion            SavedQuestion[]
+  QuestionFeedBack         QuestionFeedBack[]
 
-  @@index([collaborator_division_id], map: "questions_collaborator_division_id_fkey")
-  @@index([collaborator_id], map: "questions_collaborator_id_fkey")
-  @@index([creator_id], map: "questions_creator_id_fkey")
+  @@index([collaborator_division_id], map: "questions_collaborator_division_id_idx")
+  @@index([collaborator_id], map: "questions_collaborator_id_idx")
+  @@index([creator_id], map: "questions_creator_id_idx")
   @@map("questions")
+}
+
+model SavedQuestion {
+  saved_question_id Int       @id @default(autoincrement())
+  user_id           Int
+  question_id       Int
+  created_at        DateTime  @default(now())
+  updated_at        DateTime? @updatedAt
+  deleted_at        DateTime?
+  user              User      @relation(fields: [user_id], references: [user_id])
+  question          Question  @relation(fields: [question_id], references: [question_id])
+
+  @@unique([user_id, question_id])
+  @@index([user_id], map: "saved_question_user_id_idx")
+  @@index([question_id], map: "saved_question_question_id_idx")
+  @@map("saved_questions")
+}
+
+model QuestionFeedBack {
+  feedback_id Int       @id @default(autoincrement())
+  question_id Int
+  user_id     Int?
+  content     String    @db.Text
+  rating      Int
+  created_at  DateTime  @default(now())
+  updated_at  DateTime? @updatedAt
+  deleted_at  DateTime?
+  question    Question  @relation(fields: [question_id], references: [question_id])
+  user        User?     @relation(fields: [user_id], references: [user_id])
+
+  @@index([question_id], map: "question_feedback_question_id_idx")
+  @@index([user_id], map: "question_feedback_user_id_idx")
+  @@map("question_feedbacks")
 }
 
 model Attachment {
@@ -103,10 +145,9 @@ model Attachment {
   answer        Answer?   @relation(fields: [answer_id], references: [answer_id])
   comment       Comment?  @relation(fields: [comment_id], references: [comment_id])
 
-  @@index([comment_id], map: "attachments_comment_id_fkey")
-  @@index([answer_id], map: "attachments_answer_id_fkey")
-  @@index([question_id], map: "attachments_question_id_fkey")
-  
+  @@index([comment_id], map: "attachments_comment_id_idx")
+  @@index([answer_id], map: "attachments_answer_id_idx")
+  @@index([question_id], map: "attachments_question_id_idx")
   @@map("attachments")
 }
 
@@ -126,8 +167,8 @@ model Answer {
   notifications Notification[]
   attachment    Attachment[]
 
-  @@index([question_id], map: "answers_question_id_fkey")
-  @@index([user_id], map: "answers_user_id_fkey")
+  @@index([question_id], map: "answers_question_id_idx")
+  @@index([user_id], map: "answers_user_id_idx")
   @@map("answers")
 }
 
@@ -146,12 +187,12 @@ model Comment {
   replies     Comment[]    @relation("CommentReplies")
   question    Question?    @relation(fields: [question_id], references: [question_id])
   user        User         @relation(fields: [user_id], references: [user_id])
-  Attachment  Attachment[]
+  attachment  Attachment[]
 
-  @@index([answer_id], map: "comments_answer_id_fkey")
-  @@index([parent_id], map: "comments_parent_id_fkey")
-  @@index([question_id], map: "comments_question_id_fkey")
-  @@index([user_id], map: "comments_user_id_fkey")
+  @@index([answer_id], map: "comments_answer_id_idx")
+  @@index([parent_id], map: "comments_parent_id_idx")
+  @@index([question_id], map: "comments_question_id_idx")
+  @@index([user_id], map: "comments_user_id_idx")
   @@map("comments")
 }
 
@@ -161,13 +202,14 @@ model Like {
   created_at  DateTime  @default(now())
   like_id     Int       @id @default(autoincrement())
   question_id Int?
+  deleted_at  DateTime?
   answer      Answer?   @relation(fields: [answer_id], references: [answer_id])
   question    Question? @relation(fields: [question_id], references: [question_id])
   user        User      @relation(fields: [user_id], references: [user_id])
 
   @@unique([user_id, question_id, answer_id])
-  @@index([answer_id], map: "likes_answer_id_fkey")
-  @@index([question_id], map: "likes_question_id_fkey")
+  @@index([answer_id], map: "likes_answer_id_idx")
+  @@index([question_id], map: "likes_question_id_idx")
   @@map("likes")
 }
 
@@ -190,7 +232,7 @@ model TagsOnQuestions {
   tag         Tag       @relation(fields: [tag_id], references: [tag_id])
 
   @@id([question_id, tag_id])
-  @@index([tag_id], map: "tags_on_questions_tag_id_fkey")
+  @@index([tag_id], map: "tags_on_questions_tag_id_idx")
   @@map("tags_on_questions")
 }
 
@@ -207,9 +249,9 @@ model Notification {
   question          Question?        @relation(fields: [question_id], references: [question_id])
   user              User             @relation(fields: [user_id], references: [user_id])
 
-  @@index([answer_id], map: "notifications_answer_id_fkey")
-  @@index([question_id], map: "notifications_question_id_fkey")
-  @@index([user_id], map: "notifications_user_id_fkey")
+  @@index([answer_id], map: "notifications_answer_id_idx")
+  @@index([question_id], map: "notifications_question_id_idx")
+  @@index([user_id], map: "notifications_user_id_idx")
   @@map("notifications")
 }
 
@@ -226,6 +268,39 @@ model Config {
   @@map("configs")
 }
 
+model Conversation {
+  conversation_id     Int                   @id @default(autoincrement())
+  user_id             Int
+  title               String?
+  created_at          DateTime              @default(now())
+  updated_at          DateTime?             @updatedAt
+  deleted_at          DateTime?
+  user                User                  @relation(fields: [user_id], references: [user_id])
+  ConversationMessage ConversationMessage[]
+
+  @@index([user_id], map: "conversations_user_id_idx")
+  @@map("conversations")
+}
+
+model ConversationMessage {
+  message_id      Int       @id @default(autoincrement())
+  conversation_id Int
+  user_id         Int
+  prompt          String    @db.Text
+  response        String?   @db.Text
+  ai_model        String?
+  created_at      DateTime  @default(now())
+  updated_at      DateTime? @updatedAt
+  deleted_at      DateTime?
+
+  user         User         @relation(fields: [user_id], references: [user_id])
+  conversation Conversation @relation(fields: [conversation_id], references: [conversation_id])
+
+  @@index([conversation_id], map: "conversation_messages_conversation_id_idx")
+  @@index([user_id], map: "conversation_messages_user_id_idx")
+  @@map("conversation_messages")
+}
+
 enum QuestionStatus {
   PENDING
   ASSIGNED
@@ -240,6 +315,26 @@ enum CollaboratorType {
   NONE
 }
 
+model ChatMessage {
+  message_id   Int       @id @default(autoincrement())
+  content      String    @db.Text
+  user_id      Int
+  message_type String    @default("text")
+  reply_to_id  Int?
+  created_at   DateTime  @default(now())
+  updated_at   DateTime? @updatedAt
+  deleted_at   DateTime?
+  
+  user         User         @relation(fields: [user_id], references: [user_id])
+  reply_to     ChatMessage? @relation("MessageReplies", fields: [reply_to_id], references: [message_id])
+  replies      ChatMessage[] @relation("MessageReplies")
+
+  @@index([user_id], map: "chat_messages_user_id_idx")
+  @@index([reply_to_id], map: "chat_messages_reply_to_id_idx")
+  @@index([created_at], map: "chat_messages_created_at_idx")
+  @@map("chat_messages")
+}
+
 enum NotificationType {
   QUESTION_ASSIGNED
   ANSWER_SUBMITTED
@@ -247,4 +342,5 @@ enum NotificationType {
   ANSWER_COMMENTED
   ANSWER_ACCEPTED
   LIKE
+  FEEDBACK_ON_QUESTION
 }

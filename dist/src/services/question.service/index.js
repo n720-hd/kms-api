@@ -10,8 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.editQuestionService = exports.likeQuestionService = exports.createCommentService = exports.getAllNotificationsService = exports.deleteTagService = exports.createNewTagService = exports.getAllTagsService = exports.getAllQuestionsListService = exports.createQuestionService = void 0;
-const connection_1 = require("../../../connection");
-const delete_files_1 = require("../../utils/delete.files");
+const connection_1 = require("connection");
+const delete_files_1 = require("@/utils/delete.files");
 const createQuestionService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ title, content, due_date, tag_ids, collaborator_type, collaborator_id, collaborator_division_id, id, role, attachments }) {
     if (!title || !content || !due_date)
         throw { msg: 'Title, content and due date are required', status: 406 };

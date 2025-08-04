@@ -13,22 +13,37 @@ import { router } from './routers';
 import { configChecking } from './middleware/config.checking';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import { startScheduler } from './utils/scheduler';
+import { Server as SocketIOServer } from 'socket.io';
+import http from 'http';
+import { setupWebSocketHandlers } from './utils/web.socket';
 
 export default class App {
   private app: Express;
+  private server: http.Server;
+  public io: SocketIOServer;
 
   constructor() {
     this.app = express();
+    this.server = http.createServer(this.app);
+    this.io = new SocketIOServer(this.server, {
+      cors: {
+        origin: "http://localhost:3000",
+        credentials: true
+      }
+    });
     this.configure();
     this.routes();
     this.handleError();
+    this.setupSocketIO();
   }
 
   private configure(): void {
     this.app.use(
       cors({
-        origin: process.env.CLIENT_URL || 'http://localhost:3000', 
+        origin: 'http://localhost:3000', 
         credentials: true, 
+        
       })
     );  
     this.app.use(json());
@@ -76,6 +91,14 @@ export default class App {
     this.app.use(router);
   }
 
+  private setupSocketIO(): void {
+    setupWebSocketHandlers(this.io);
+  }
+
+  public getApp(): express.Application {
+    return this.app
+  }
+
   public start(): void {
     process.env.TZ = 'Asia/Jakarta'
 
@@ -87,8 +110,9 @@ export default class App {
     const date = new Date()
     console.log('Current timezone: ', process.env.TZ);
     console.log('Current server time: ', date.toLocaleString('en-US', {timeZone: process.env.TZ}));
-    this.app.listen(PORT, () => {
+    this.server.listen(PORT, () => {
       console.log(`  ➜ [ ϟϟ API ϟϟ ] Local: http://localhost:${PORT}/`);
     });
+    startScheduler();
   }
 }

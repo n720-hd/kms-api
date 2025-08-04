@@ -10,8 +10,8 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.createAnswer = exports.editQuestion = exports.likeQuestion = exports.createComment = exports.getAllNotifications = exports.deleteTag = exports.createNewTag = exports.getAllTags = exports.getAllQuestionsList = exports.createQuestion = void 0;
-const question_service_1 = require("../services/question.service");
-const delete_files_1 = require("../utils/delete.files");
+const question_service_1 = require("@/services/question.service");
+const delete_files_1 = require("@/utils/delete.files");
 const createQuestion = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { title, content, due_date, collaborator_type, collaborator_id, collaborator_division_id, usersId, authorizationRole, tag_ids } = req.body;

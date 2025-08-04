@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
-import { createNewTagService, createQuestionService, deleteTagService, getAllNotificationsService, getAllQuestionsListService, getAllTagsService, createCommentService, likeQuestionService, editQuestionService } from "@/services/question.service";
+import { createNewTagService, createQuestionService, deleteTagService, getAllNotificationsService, getAllQuestionsListService, getAllTagsService, createCommentService, likeQuestionService, editQuestionService, getQuestionDetailsService, markNotificationAsReadService, markAllNotificationsAsReadService, getCollaboratorListService, getCollaboratorDivisionListService, saveQuestionService, getQuestionFeedbackService, createFeedbackService, getLikeStatusService, getQuestionEditService } from "@/services/question.service";
 import { deleteFiles } from "@/utils/delete.files";
+import { error } from "console";
 
 export const createQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
@@ -16,12 +17,11 @@ export const createQuestion = async (req: Request, res: Response, next: NextFunc
             tag_ids 
         } = req.body;
         const tagIds = JSON.parse(req.body.tag_ids)
-        const collaboratorId = parseInt(collaborator_id)
+        const collaboratorId = parseInt(collaborator_id) 
         const collaboratorDivisionId = parseInt(collaborator_division_id) 
         const files = req.files || []
         const attachments = Array.isArray(files) ? files : Object.values(files).flat()
 
-        if (authorizationRole === 'admin' && authorizationRole === 'creator') throw {msg: 'Unauthorized', status: 401}
             const question = await createQuestionService({
                 title, 
                 content, 
@@ -73,6 +73,22 @@ export const getAllQuestionsList = async (req: Request, res: Response, next: Nex
             error: false,
             data: questions,
             message: 'Questions retrieved successfully' 
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const getQuestionDetails = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {question_id} = req.params
+
+        const question = await getQuestionDetailsService({question_id})
+
+        res.status(200).json({
+            error: false,
+            data: question,
+            message: 'Question retrieved'
         })
     } catch (error) {
         next(error)
@@ -147,17 +163,21 @@ export const getAllNotifications = async (req: Request, res: Response, next: Nex
 export const createComment = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const {question_id, comment, usersId, authorizationRole, parent_comment_id, answer_id} = req.body;
-        const attachments = req.files as Express.Multer.File[] || [];
+        const files = req.files || [];
+    const attachments = Array.isArray(files) ? files : Object.values(files).flat();
+        console.log('attachments : ',attachments)
+        console.log('body:',question_id, comment, usersId, authorizationRole, parent_comment_id, answer_id);
 
         if(!question_id || !comment) throw {msg: 'Question and comment are required', status: 406};
+        if(question_id && answer_id) throw {msg: 'You cant comment on question and answer at the same time', status: 400};
 
         await createCommentService({
-            question_id,
+            question_id: Number(question_id),
             comment,
             user_id: usersId,
             attachments,
-            parent_comment_id,
-            answer_id
+            parent_comment_id: Number(parent_comment_id),
+            answer_id: Number(answer_id)
         })
 
         res.status(201).json({
@@ -182,13 +202,16 @@ export const createComment = async (req: Request, res: Response, next: NextFunct
 
 export const likeQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {usersId, authorizationRole, question_id, answer_id } = req.body
+        const {usersId, authorizationRole, question_id, answer_id, like } = req.body
+
+        console.log('likeQuestion body:', req.body)
 
         await likeQuestionService({
             id: usersId,
             role: authorizationRole,
             question_id,
-            answer_id
+            answer_id,
+            like
         })
 
         res.status(200).json({
@@ -201,9 +224,27 @@ export const likeQuestion = async (req: Request, res: Response, next: NextFuncti
     }
 }
 
+export const getLikeStatus = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId} = req.body;
+        const {question_id} = req.params;
+
+        const likeStatus = await getLikeStatusService({id: Number(usersId), question_id: Number(question_id)})
+
+        res.status(200).json({
+            error: false,
+            data: likeStatus,
+            message: 'Like status retrieved successfully'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
 export const editQuestion = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const {question_id, title, content, due_date, tag_ids, collaborator_type, collaborator_id, collaborator_division_id, usersId, attachmentsToDelete, tagsToDelete, authorizationRole} = req.body;
+        console.log(req.body)
         
         if(!question_id) throw {msg:'Invalid Question', status: 406}
         if (due_date) {
@@ -216,10 +257,18 @@ export const editQuestion = async (req: Request, res: Response, next: NextFuncti
             if(parsedDueDate < today) throw {msg: 'Due date cannot be in the past', status: 406};
         }
 
-        const tagIds = tag_ids? JSON.parse(tag_ids) : [];
+       const tagIds = Array.isArray(tag_ids) ? tag_ids : tag_ids ? JSON.parse(tag_ids) : [];
+const attachmentsToBeDeleted = Array.isArray(attachmentsToDelete)
+  ? attachmentsToDelete
+  : attachmentsToDelete && attachmentsToDelete !== ""
+    ? JSON.parse(attachmentsToDelete)
+    : [];
+const tagsToBeDeleted = Array.isArray(tagsToDelete)
+  ? tagsToDelete
+  : tagsToDelete && tagsToDelete !== ""
+    ? JSON.parse(tagsToDelete)
+    : [];
         const questionId = parseInt(question_id)
-        const attachmentsToBeDeleted = attachmentsToDelete? JSON.parse(attachmentsToDelete) : [];
-        const tagsToBeDeleted = tagsToDelete ? JSON.parse(tagsToDelete) : [];
         const collaboratorId = collaborator_id ? parseInt(collaborator_id) : undefined;
         const collaboratorDivisionId = collaborator_division_id ? parseInt(collaborator_division_id) : undefined;
 
@@ -262,14 +311,168 @@ export const editQuestion = async (req: Request, res: Response, next: NextFuncti
     }
 }
 
-export const createAnswer = async(req: Request, res: Response, next: NextFunction) => {
+export const markNotificationAsRead = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const {} = req.body
+        const {notificationId} = req.params;
+        const {usersId, authorizationRole} = req.body;
+
+        if(!notificationId) throw {msg: 'Notification ID is required', status: 406};
+        if(!usersId || !authorizationRole) throw {msg: 'Please log in first', status: 401};
+        
+
+        await markNotificationAsReadService({
+            notificationId,
+            id: usersId,
+        })
+
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Notification marked as read'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+export const markAllNotificationsAsRead = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole} = req.body;
+
+        if(!usersId || !authorizationRole) throw {msg: 'Please log in first', status: 401};
+
+        await markAllNotificationsAsReadService({id: usersId})
+
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'All notifications marked as read'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const getCollaboratorList = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole} = req.body;
+        
+        if(!usersId || !authorizationRole) throw {msg: 'Please log in first', status: 401};
+
+        const collaborators = await getCollaboratorListService();
+
+        res.status(200).json({
+            error: false,
+            data: collaborators,
+            message: 'Collaborators retrieved successfully'
+        });
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const getCollaboratorDivisionList = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole} = req.body;
+
+        if(!usersId || !authorizationRole) throw {msg: 'Please log in first', status: 401};
+
+        const collaboratorDivisions = await getCollaboratorDivisionListService()
+
+        res.status(200).json({
+            error: false,
+            data: collaboratorDivisions,
+            message: 'Collaborator divisions retrieved'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const saveQuestion = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {question_id, usersId, authorizationRole, save, unsave} = req.body;
+        console.log('saveQuestion body:', req.body)
+
+        if(!question_id) throw {msg: 'Question ID is required', status: 406};
+        if(!usersId || !authorizationRole) throw {msg: 'Please log in first', status: 401};
+
+        await saveQuestionService({
+            question_id,
+            id: usersId,
+            save,
+            unsave
+        })
+        res.status(200).json({
+            error: false,
+            data: {},
+            message: 'Question saved successfully'
+        })
+    } catch (error) {
+        next(error);
+    }
+}
+
+// export const getSavedQuestions = async(req: Request, res: Response, next: NextFunction) => {
+//     try {
+//         const {usersId, authorizationRole} = req.body
+
+//         const savedQuestions = await getSavedQuestionsService({id: usersId, role: authorizationRole})
+
+//         res.status(200).json({
+//             error: false,
+//             data: {},
+//             message: 'Saved questions retrieved'
+//         })
+//     } catch (error) {
+        
+//     }
+// }
+
+export const getQuestionFeedback = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole} = req.body;
+        const {question_id} = req.query;
+
+        const questionFeedback = await getQuestionFeedbackService({id: usersId, role: authorizationRole, question_id: Number(question_id)});
+
+        res.status(200).json({
+            error: false,
+            data: questionFeedback,
+            message: 'Feedback retrieved'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const createFeedback = async(req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole, content, rating, question_id} = req.body
+
+        await createFeedbackService({id: usersId, role: authorizationRole, content, rating, question_id})
 
         res.status(201).json({
             error: false,
             data: {},
-            message: 'Answer created'
+            message: 'Feedback successfully sent'
+        })
+    } catch (error) {
+        next(error)
+    }
+}
+
+export const getQuestionEdit = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+        const {usersId, authorizationRole} = req.body;
+        if(!usersId || !authorizationRole) throw {msg: 'Please log in first', status: 401}
+        const {question_id} = req.params;
+
+        const question = await getQuestionEditService({question_id: Number(question_id), id: usersId, role: authorizationRole});
+
+        res.status(200).json({
+            error: false,
+            data: question,
+            message: 'Question data to be edited retrieved successfully'
         })
     } catch (error) {
         next(error)

@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.setUserDivisionService = exports.setUserRoleService = exports.getUserRoleService = exports.approvePendingAnswerService = exports.getAllPendingAnswerService = exports.takeDownQuestionService = exports.approvePendingQuestionService = exports.getAllDivisionsService = exports.getAllUsersService = exports.setMaintenanceModeService = void 0;
-const connection_1 = require("../../../connection");
+const connection_1 = require("connection");
 const setMaintenanceModeService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ maintenanceMode, id, role }) {
     yield connection_1.prisma.user.findUnique({
         where: {
@@ -211,7 +211,7 @@ const setUserRoleService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ 
         throw { msg: 'Invalid credentials', status: 406 };
     const isRoleValid = yield connection_1.prisma.role.findUnique({
         where: {
-            id: role_id
+            role_id
         }
     });
     if (!isRoleValid)

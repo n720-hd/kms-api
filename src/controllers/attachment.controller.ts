@@ -32,6 +32,11 @@ export const downloadAttachment = async(req: Request, res: Response, next: NextF
             }
         });
 
+        res.sendFile(path.resolve(attachment.file_path), (err) => {
+            if (err) {
+                next({ msg: 'Error sending file', status: 500 });
+            }
+        });
     } catch (error) {
         next(error)
     }

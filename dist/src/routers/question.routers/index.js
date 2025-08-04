@@ -1,8 +1,8 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const question_controller_1 = require("../../controllers/question.controller");
-const uploader_1 = require("../../middleware/uploader");
-const verify_token_1 = require("../../middleware/verify.token");
+const question_controller_1 = require("@/controllers/question.controller");
+const uploader_1 = require("@/middleware/uploader");
+const verify_token_1 = require("@/middleware/verify.token");
 const express_1 = require("express");
 const router = (0, express_1.Router)();
 router.get('/', question_controller_1.getAllQuestionsList);

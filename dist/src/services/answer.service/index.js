@@ -10,7 +10,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.editAnswerService = exports.createAnswerService = void 0;
-const connection_1 = require("../../../connection");
+const connection_1 = require("connection");
 const createAnswerService = (_a) => __awaiter(void 0, [_a], void 0, function* ({ id, role, content, question_id, attachments }) {
     const question = yield connection_1.prisma.question.findUnique({
         where: {

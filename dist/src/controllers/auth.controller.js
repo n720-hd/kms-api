@@ -13,10 +13,10 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.changePassword = exports.keepLogin = exports.loginUser = exports.loginCreator = exports.loginAdmin = exports.createCreator = exports.createUser = exports.createAdmin = exports.registerCreator = exports.registerUser = exports.registerAdmin = exports.authUser = void 0;
-const prisma_1 = __importDefault(require("../prisma"));
-const auth_service_1 = require("../services/auth.service");
-const hash_password_1 = require("../utils/hash.password");
-const jwt_1 = require("../utils/jwt");
+const prisma_1 = __importDefault(require("@/prisma"));
+const auth_service_1 = require("@/services/auth.service");
+const hash_password_1 = require("@/utils/hash.password");
+const jwt_1 = require("@/utils/jwt");
 const authUser = (req, res, next) => __awaiter(void 0, void 0, void 0, function* () {
     try {
         const { usersId, authorizationRole } = req.body;
