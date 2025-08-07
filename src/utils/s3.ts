@@ -261,4 +261,47 @@ export const generateDownloadUrl = async (key: string, expiresIn: number = 3600)
   }
 };
 
+// Process attachments to generate signed URLs
+export const processAttachmentsWithSignedUrls = async (attachments: any[]): Promise<any[]> => {
+  if (!attachments || attachments.length === 0) {
+    return attachments;
+  }
+
+  return Promise.all(
+    attachments.map(async (attachment) => {
+      try {
+        // Skip S3 processing for YouTube URLs
+        if (attachment.file_path.includes('youtube.com') || attachment.file_path.includes('youtu.be')) {
+          return attachment;
+        }
+        
+        // Extract S3 key from file_path
+        const s3Key = extractKeyFromUrl(attachment.file_path);
+        // Generate signed URL with 24-hour expiry
+        const signedUrl = await generateSignedUrl(s3Key, 86400);
+        
+        return {
+          ...attachment,
+          file_path: signedUrl
+        };
+      } catch (error) {
+        console.error(`Error generating signed URL for attachment ${attachment.id}:`, error);
+        // Return original attachment if signed URL generation fails
+        return attachment;
+      }
+    })
+  );
+};
+
+// Generate download URL for single attachment
+export const generateDownloadUrlForAttachment = async (filePath: string): Promise<string> => {
+  try {
+    const s3Key = extractKeyFromUrl(filePath);
+    return await generateSignedUrl(s3Key, 3600); // 1 hour expiry for downloads
+  } catch (error) {
+    console.error('Error generating download URL:', error);
+    throw new Error('Unable to generate download link');
+  }
+};
+
 export default s3Client;

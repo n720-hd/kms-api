@@ -9,11 +9,11 @@ export const createAnswer = async(req: Request, res: Response, next: NextFunctio
         const files = req.files || [];
         const attachments = Array.isArray(files) ? files : Object.values(files).flat();
 
-        await createAnswerService({id: usersId, role: authorizationRole, question_id: Number(question_id), content, attachments})
+        const createdAnswer = await createAnswerService({id: usersId, role: authorizationRole, question_id: Number(question_id), content, attachments})
 
         res.status(201).json({
             error: false,
-            data: {},
+            data: createdAnswer,
             message: 'Answer successfully created'
         })
     } catch (error) {

@@ -31,7 +31,7 @@ export const chatAiService = async({prompt, usersId, aiModel, conversationId, io
     if(!previousMessage){
         message.push({
             role: 'system',
-            message: 'You are an AI Assistant in a knowledge exchange web application like stack-overflow, but the topics could be broader than it, it could be finance and business also'
+            message: 'You are an AI Assistant in a knowledge exchange web application like stack-overflow, but the topics could be broader than it, it could be finance and business also else it would be invalid and you should not answer it'
         })
     }
 

@@ -7,6 +7,8 @@ import {
   QuestionStatus,
 } from "./types";
 import { deleteFiles } from "@/utils/delete.files";
+import { processAttachmentsWithSignedUrls, generateSignedUrl } from "@/utils/s3";
+import { getYouTubeVideoTitle } from "@/utils/yt.title.generator";
 
 export const createQuestionService = async ({
   title,
@@ -19,6 +21,7 @@ export const createQuestionService = async ({
   id,
   role,
   attachments,
+  youtube_url
 }: ICreateQuestion) => {
   if (!title || !content || !due_date)
     throw { msg: "Title, content and due date are required", status: 406 };
@@ -49,8 +52,7 @@ export const createQuestionService = async ({
   if (!isAuthorized) throw { msg: "Unauthorized", status: 401 };
   const initialStatus: QuestionStatus =
     role === "user" ? "PENDING" : "ASSIGNED";
-  // console.log('attachments: ',attachments)
-  // console.log('Attachment structure received:', typeof attachments);
+ 
 
   return await prisma.$transaction(async (tx) => {
     const question = await tx.question.create({
@@ -76,13 +78,23 @@ export const createQuestionService = async ({
           tx.attachment.create({
             data: {
               file_name: attachment.originalname || attachment.filename,
-              // Save the full S3 URL so it's directly accessible
               file_path: attachment.location || `src/public/attachments/${attachment.filename}`,
               question_id: question.question_id,
             },
           })
         )
       );
+    }
+
+    if (youtube_url){
+      const videoTitle = await getYouTubeVideoTitle(youtube_url)
+      await tx.attachment.create({
+        data: {
+          file_name: videoTitle,
+          file_path: youtube_url,
+          question_id: question.question_id,
+        }
+      })
     }
 
     await Promise.all(
@@ -154,6 +166,9 @@ export const createQuestionService = async ({
       where: { question_id: question.question_id },
     });
     console.log(questionWithAttachments);
+    
+    const attachmentsWithSignedUrls = await processAttachmentsWithSignedUrls(questionWithAttachments || []);
+    
     return {
       title: question.title,
       content: question.content,
@@ -163,7 +178,7 @@ export const createQuestionService = async ({
       collaborator_type: question.collaborator_type,
       collaborator_id: question.collaborator_id,
       collaborator_division_id: question.collaborator_division_id,
-      attachments: questionWithAttachments || [],
+      attachments: attachmentsWithSignedUrls,
     };
   });
 };
@@ -186,6 +201,7 @@ export const getQuestionDetailsService = async ({
       attachment: true,
       answers: {
         include: {
+          attachment: true,
           user: {
             select: {
               user_id: true,
@@ -268,20 +284,87 @@ export const getQuestionDetailsService = async ({
     return rootComments;
   };
 
-  const formattedAnswers = question.answers.map((answer) => ({
-    ...answer,
-    likes_count: answer.likes.length,
-  }));
+  // Process answer attachments and profile pictures 
+  const answersWithSignedUrls = await Promise.all(
+    question.answers.map(async (answer: any) => {
+      const attachmentsWithSignedUrls = answer.attachment 
+        ? await processAttachmentsWithSignedUrls(answer.attachment)
+        : [];
+      
+      // Generate signed URL for user profile picture
+      let profilePictureUrl = null;
+      if (answer.user?.profile_picture) {
+        try {
+          profilePictureUrl = await generateSignedUrl(answer.user.profile_picture, 86400);
+        } catch (error) {
+          console.error('Error generating signed URL for answer user profile picture:', error);
+          profilePictureUrl = null;
+        }
+      }
+      
+      return {
+        ...answer,
+        attachment: attachmentsWithSignedUrls,
+        user: answer.user ? {
+          ...answer.user,
+          profile_picture: profilePictureUrl
+        } : null,
+        likes_count: answer.likes.length,
+      };
+    })
+  );
 
   // Calculate average rating
   const averageRating = (question as any).QuestionFeedBack?.length > 0 
     ? (question as any).QuestionFeedBack.reduce((acc: number, feedback: any) => acc + feedback.rating, 0) / (question as any).QuestionFeedBack.length 
     : 0;
 
+  // Process attachments to generate signed URLs
+  const attachmentsWithSignedUrls = await processAttachmentsWithSignedUrls(question.attachment || []);
+  
+  // Generate signed URL for creator profile picture
+  let creatorProfilePictureUrl = null;
+  if (question.creator?.profile_picture) {
+    try {
+      creatorProfilePictureUrl = await generateSignedUrl(question.creator.profile_picture, 86400);
+    } catch (error) {
+      console.error('Error generating signed URL for creator profile picture:', error);
+      creatorProfilePictureUrl = null;
+    }
+  }
+  
+  // Generate signed URL for collaborator profile picture  
+  let collaboratorProfilePictureUrl = null;
+  if (question.collaborator?.profile_picture) {
+    try {
+      collaboratorProfilePictureUrl = await generateSignedUrl(question.collaborator.profile_picture, 86400);
+    } catch (error) {
+      console.error('Error generating signed URL for collaborator profile picture:', error);
+      collaboratorProfilePictureUrl = null;
+    }
+  }
+  
+  // Process comment attachments
+  const commentsWithSignedUrls = await Promise.all(
+    question.comments.map(async (comment: any) => ({
+      ...comment,
+      attachment: await processAttachmentsWithSignedUrls(comment.attachment || [])
+    }))
+  );
+
   const formattedQuestions = {
     ...question,
-    answers: formattedAnswers,
-    comments: formattedComment(question.comments),
+    creator: question.creator ? {
+      ...question.creator,
+      profile_picture: creatorProfilePictureUrl
+    } : null,
+    collaborator: question.collaborator ? {
+      ...question.collaborator,
+      profile_picture: collaboratorProfilePictureUrl
+    } : null,
+    attachment: attachmentsWithSignedUrls,
+    answers: answersWithSignedUrls,
+    comments: formattedComment(commentsWithSignedUrls),
     like_count: question._count,
     total_answer: question.answers.length,
     total_attachments: question.attachment.length,
@@ -331,11 +414,13 @@ export const getAllQuestionsListService = async ({
       {
         title: {
           contains: search.trim(),
+          mode: "insensitive",
         }
       },
       {
         content: {
           contains: search.trim(),
+          mode: "insensitive",
         }
       }
     ];
@@ -461,41 +546,56 @@ export const getAllQuestionsListService = async ({
 
   const total = await prisma.question.count({ where });
 
-  let formattedQuestions = questions.map((question: any) => {
-    const tags = question.tags.map((t: any) => ({
-      id: t.tag.tag_id,
-      name: t.tag.name,
-    }));
+  let formattedQuestions = await Promise.all(
+    questions.map(async (question: any) => {
+      const tags = question.tags.map((t: any) => ({
+        id: t.tag.tag_id,
+        name: t.tag.name,
+      }));
 
-    const hasAcceptedAnswer = question.answers.some(
-      (answer: any) => answer.is_accepted
-    );
+      const hasAcceptedAnswer = question.answers.some(
+        (answer: any) => answer.is_accepted
+      );
 
-    const averageRating = question.QuestionFeedBack?.length > 0 
-      ? question.QuestionFeedBack.reduce((acc: number, feedback: any) => acc + feedback.rating, 0) / question.QuestionFeedBack.length 
-      : 0;
+      const averageRating = question.QuestionFeedBack?.length > 0 
+        ? question.QuestionFeedBack.reduce((acc: number, feedback: any) => acc + feedback.rating, 0) / question.QuestionFeedBack.length 
+        : 0;
 
-    return {
-      id: question.question_id,
-      title: question.title,
-      content: question.content,
-      status: question.status,
-      created_at: question.created_at,
-      updated_at: question.updated_at,
-      due_date: question.due_date,
-      is_published: question.is_published,
-      creator: question.creator,
-      collaborator: question.collaborator,
-      collaborator_division: question.collaborator_division,
-      attachment: question.attachment,
-      tags,
-      likes_count: question._count.likes,
-      comments_count: question._count.comments,
-      answers_count: question._count.answers,
-      has_accepted_answer: hasAcceptedAnswer,
-      average_rating: averageRating,
-    };
-  });
+      let creatorProfilePictureUrl = null;
+      if (question.creator?.profile_picture) {
+        try {
+          creatorProfilePictureUrl = await generateSignedUrl(question.creator.profile_picture, 86400);
+        } catch (error) {
+          console.error('Error generating signed URL for creator profile picture:', error);
+          creatorProfilePictureUrl = null;
+        }
+      }
+
+      return {
+        id: question.question_id,
+        title: question.title,
+        content: question.content,
+        status: question.status,
+        created_at: question.created_at,
+        updated_at: question.updated_at,
+        due_date: question.due_date,
+        is_published: question.is_published,
+        creator: question.creator ? {
+          ...question.creator,
+          profile_picture: creatorProfilePictureUrl
+        } : null,
+        collaborator: question.collaborator,
+        collaborator_division: question.collaborator_division,
+        attachment: question.attachment,
+        tags,
+        likes_count: question._count.likes,
+        comments_count: question._count.comments,
+        answers_count: question._count.answers,
+        has_accepted_answer: hasAcceptedAnswer,
+        average_rating: averageRating,
+      };
+    })
+  );
 
   if (validSortBy === "rating") {
     formattedQuestions = formattedQuestions
@@ -599,11 +699,11 @@ export const createCommentService = async ({
 
   if (attachments && attachments.length > 0) {
     await Promise.all(
-      attachments.map(async (attachment) => {
+      attachments.map(async (attachment: any) => {
         await prisma.attachment.create({
           data: {
-            file_name: attachment.filename,
-            file_path: attachment.path,
+            file_name: attachment.originalname || attachment.filename,
+            file_path: attachment.location || `src/public/attachments/${attachment.filename}`,
             comment_id: createdComment.comment_id,
           },
         });
@@ -1011,14 +1111,30 @@ export const getCollaboratorListService = async () => {
       },
     },
   });
-  return collaborators.map((collaborator) => ({
-    id: collaborator.user_id,
-    username: collaborator.username,
-    profile_picture: collaborator.profile_picture,
-    division: collaborator.division?.division_name
-      ? collaborator.division.division_name
-      : null,
-  }));
+  
+  return Promise.all(
+    collaborators.map(async (collaborator) => {
+      // Generate signed URL for profile picture
+      let profilePictureUrl = null;
+      if (collaborator.profile_picture) {
+        try {
+          profilePictureUrl = await generateSignedUrl(collaborator.profile_picture, 86400);
+        } catch (error) {
+          console.error('Error generating signed URL for collaborator profile picture:', error);
+          profilePictureUrl = null;
+        }
+      }
+      
+      return {
+        id: collaborator.user_id,
+        username: collaborator.username,
+        profile_picture: profilePictureUrl,
+        division: collaborator.division?.division_name
+          ? collaborator.division.division_name
+          : null,
+      };
+    })
+  );
 };
 
 export const getCollaboratorDivisionListService = async () => {
@@ -1102,7 +1218,7 @@ export const getQuestionFeedbackService = async ({
   role: string;
   question_id: number;
 }) => {
-  return await prisma.questionFeedBack.findMany({
+  const feedbacks = await prisma.questionFeedBack.findMany({
     where: {
       question_id,
       question: {
@@ -1129,6 +1245,29 @@ export const getQuestionFeedbackService = async ({
       },
     },
   });
+  
+  return Promise.all(
+    feedbacks.map(async (feedback) => {
+      // Generate signed URL for user profile picture
+      let profilePictureUrl = null;
+      if (feedback.user?.profile_picture) {
+        try {
+          profilePictureUrl = await generateSignedUrl(feedback.user.profile_picture, 86400);
+        } catch (error) {
+          console.error('Error generating signed URL for feedback user profile picture:', error);
+          profilePictureUrl = null;
+        }
+      }
+      
+      return {
+        ...feedback,
+        user: feedback.user ? {
+          ...feedback.user,
+          profile_picture: profilePictureUrl
+        } : null,
+      };
+    })
+  );
 };
 
 export const createFeedbackService = async ({
@@ -1203,5 +1342,11 @@ export const getQuestionEditService = async ({
       status: 404,
     };
 
-  return question;
+  // Process attachments to generate signed URLs
+  const attachmentsWithSignedUrls = await processAttachmentsWithSignedUrls(question.attachment || []);
+
+  return {
+    ...question,
+    attachment: attachmentsWithSignedUrls,
+  };
 };

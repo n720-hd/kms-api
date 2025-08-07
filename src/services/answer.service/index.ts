@@ -1,6 +1,7 @@
 import { prisma } from "connection"
 import { ICreateAnswer, IEditAnswer } from "./types"
 import { deleteFiles } from "@/utils/delete.files";
+import { processAttachmentsWithSignedUrls, generateSignedUrl } from "@/utils/s3";
 
 export const createAnswerService = async({id, role, content, question_id, attachments}: ICreateAnswer) => {
     const question = await prisma.question.findUnique({
@@ -43,8 +44,8 @@ export const createAnswerService = async({id, role, content, question_id, attach
                 attachments.map(attachment => 
                     tx.attachment.create({
                         data: {
-                            file_name: attachment.filename,
-                            file_path: `src/public/attachments${attachment.filename}`,
+                            file_name: attachment.originalname || attachment.filename,
+                            file_path: (attachment as any).location || (attachment as any).key || `src/public/attachments/${attachment.filename}`,
                             answer_id: answer.answer_id
                         }
                     })
@@ -64,6 +65,50 @@ export const createAnswerService = async({id, role, content, question_id, attach
             )
         )
 
+        // Get the created answer with attachments
+        const createdAnswer = await tx.answer.findUnique({
+            where: { answer_id: answer.answer_id },
+            include: {
+                attachment: true,
+                user: {
+                    select: {
+                        user_id: true,
+                        username: true,
+                        profile_picture: true,
+                        division: {
+                            select: {
+                                division_name: true,
+                            },
+                        },
+                    },
+                },
+            }
+        });
+
+        if (!createdAnswer) return null;
+
+        // Process attachments with signed URLs
+        const attachmentsWithSignedUrls = await processAttachmentsWithSignedUrls(createdAnswer.attachment || []);
+        
+        // Generate signed URL for profile picture
+        let profilePictureUrl = null;
+        if (createdAnswer.user?.profile_picture) {
+            try {
+                profilePictureUrl = await generateSignedUrl(createdAnswer.user.profile_picture, 86400);
+            } catch (error) {
+                console.error('Error generating signed URL for user profile picture:', error);
+                profilePictureUrl = null;
+            }
+        }
+
+        return {
+            ...createdAnswer,
+            attachment: attachmentsWithSignedUrls,
+            user: createdAnswer.user ? {
+                ...createdAnswer.user,
+                profile_picture: profilePictureUrl
+            } : null,
+        };
     })
 }
 
@@ -111,8 +156,8 @@ export const editAnswerService = async({id, role, answer_id, content, attachment
                 attachments!.map(attachment => (
                     tx.attachment.create({
                         data: {
-                            file_name: attachment.filename,
-                            file_path: `src/public/attachments/${attachment.filename}`,
+                            file_name: attachment.originalname || attachment.filename,
+                            file_path: (attachment as any).location || (attachment as any).key || `src/public/attachments/${attachment.filename}`,
                             answer_id: answer_id
                         }
                     })
@@ -129,6 +174,49 @@ export const editAnswerService = async({id, role, answer_id, content, attachment
             }
         })
         
+        const updatedAnswer = await tx.answer.findUnique({
+            where: { answer_id },
+            include: {
+                attachment: {
+                    where: { deleted_at: null }
+                },
+                user: {
+                    select: {
+                        user_id: true,
+                        username: true,
+                        profile_picture: true,
+                        division: {
+                            select: {
+                                division_name: true,
+                            },
+                        },
+                    },
+                },
+            }
+        });
+
+        if (!updatedAnswer) return null;
+
+        const attachmentsWithSignedUrls = await processAttachmentsWithSignedUrls(updatedAnswer.attachment || []);
+        
+        let profilePictureUrl = null;
+        if (updatedAnswer.user?.profile_picture) {
+            try {
+                profilePictureUrl = await generateSignedUrl(updatedAnswer.user.profile_picture, 86400);
+            } catch (error) {
+                console.error('Error generating signed URL for user profile picture:', error);
+                profilePictureUrl = null;
+            }
+        }
+
+        return {
+            ...updatedAnswer,
+            attachment: attachmentsWithSignedUrls,
+            user: updatedAnswer.user ? {
+                ...updatedAnswer.user,
+                profile_picture: profilePictureUrl
+            } : null,
+        };
     })
 }
 
@@ -142,5 +230,13 @@ export const getAnswerToBeEditedService = async({id, role, answer_id}:{id: numbe
             attachment: true
         }
     })
-    return answer
+    
+    if (!answer) return null;
+    
+    const attachmentsWithSignedUrls = await processAttachmentsWithSignedUrls(answer.attachment || []);
+    
+    return {
+        ...answer,
+        attachment: attachmentsWithSignedUrls
+    };
 }

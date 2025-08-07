@@ -14,9 +14,10 @@ export const createQuestion = async (req: Request, res: Response, next: NextFunc
             collaborator_division_id,
             usersId,
             authorizationRole,
-            tag_ids 
+            tag_ids,
+            youtube_url
         } = req.body;
-        const tagIds = JSON.parse(req.body.tag_ids)
+        const tagIds = JSON.parse(tag_ids)
         const collaboratorId = parseInt(collaborator_id) 
         const collaboratorDivisionId = parseInt(collaborator_division_id) 
         const files = req.files || []
@@ -32,6 +33,7 @@ export const createQuestion = async (req: Request, res: Response, next: NextFunc
                 collaborator_division_id: collaboratorDivisionId,
                 id: usersId,
                 role: authorizationRole,
+                youtube_url,
                 attachments: { attachments }
             })
        

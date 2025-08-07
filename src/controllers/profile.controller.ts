@@ -23,7 +23,7 @@ export const getUserProfile = async (req: Request, res: Response, next: NextFunc
 export const editUserProfile = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const {authorizationRole, usersId, first_name, last_name, username} = req.body;
-        // Store just the S3 key, not the full URL
+        
         const profile_picture = req?.file ? (req.file as any).key || req.file.filename : null;
 
         console.log(req.body, req.file);

@@ -4,6 +4,7 @@ export interface ICreateQuestion {
   title: string;
   content: string;
   due_date: Date;
+  youtube_url?: string;
   tag_ids: number[];
   collaborator_type: "PERSONAL" | "DIVISION" | "NONE";
   collaborator_id: number;

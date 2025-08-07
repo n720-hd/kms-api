@@ -77,18 +77,14 @@ export const editUserProfileService = async ({
     if (last_name) updateData.last_name = last_name;
     if (username) updateData.username = username;
 
-    // Handle profile picture update
     if (profile_picture) {
-      // 1. Update profile FIRST before deleting old file
       updateData.profile_picture = profile_picture;
       
-      // 2. Perform update immediately
       const updatedUser = await tx.user.update({
         where: { user_id: id },
         data: updateData,
       });
 
-      // 3. Delete old file AFTER successful update
       if (currentUser.profile_picture) {
         try {
           await deleteFiles({
@@ -98,7 +94,6 @@ export const editUserProfileService = async ({
           });
           
         } catch (deleteError) {
-          // Handle error but don't fail the operation
           console.error('Failed to delete old profile picture:', deleteError);
         }
       }
@@ -106,7 +101,6 @@ export const editUserProfileService = async ({
       return updatedUser;
     }
 
-    // For non-picture updates
     return await tx.user.update({
       where: { user_id: id },
       data: updateData,
